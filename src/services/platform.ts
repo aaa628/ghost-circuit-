@@ -13,6 +13,7 @@ import {
   showLoginPrompt,
   showShareSheet,
 } from '@devvit/web/client';
+import { isCircuitKey, isPermanent } from '../game/track/Circuits';
 import { isDateKey } from '../game/util/date';
 import { isRunId } from '../shared/api';
 import { readString, removeKey, writeString } from './storage';
@@ -56,7 +57,7 @@ export function encodeChallengePayload(ref: ChallengeRef): string {
 export function parseChallengePayload(raw: string): ChallengeRef | null {
   try {
     const v: unknown = JSON.parse(raw);
-    if (v && typeof v === 'object' && 'd' in v && 'c' in v && isDateKey(v.d) && isRunId(v.c)) {
+    if (v && typeof v === 'object' && 'd' in v && 'c' in v && isCircuitKey(v.d) && isRunId(v.c)) {
       return { date: v.d, runId: v.c };
     }
   } catch {
@@ -78,7 +79,7 @@ export function takePendingChallenge(): ChallengeRef | null {
     const v: unknown = JSON.parse(raw);
     if (
       v && typeof v === 'object' && 'date' in v && 'runId' in v && 'at' in v &&
-      isDateKey(v.date) && isRunId(v.runId) && typeof v.at === 'number' && Date.now() - v.at < 5 * 60_000
+      isCircuitKey(v.date) && isRunId(v.runId) && typeof v.at === 'number' && Date.now() - v.at < 5 * 60_000
     ) {
       return { date: v.date, runId: v.runId };
     }
@@ -88,13 +89,13 @@ export function takePendingChallenge(): ChallengeRef | null {
   return null;
 }
 
-/** Challenge from the page URL (?date=YYYY-MM-DD&challenge=<runId>). */
+/** Challenge from the page URL (?date=YYYY-MM-DD or ?circuit=perm-*, plus &challenge=<runId>). */
 export function readUrlChallenge(): ChallengeRef | null {
   try {
     const params = new URLSearchParams(globalThis.location.search);
-    const date = params.get('date');
+    const date = params.get('date') ?? params.get('circuit');
     const runId = params.get('challenge');
-    if (isDateKey(date) && isRunId(runId)) return { date, runId };
+    if (isCircuitKey(date) && isRunId(runId)) return { date, runId };
   } catch {
     // ignore
   }
@@ -107,7 +108,7 @@ export function challengeUrl(ref: ChallengeRef): string {
   url.pathname = url.pathname.replace(/[^/]*$/, '');
   url.search = '';
   url.hash = '';
-  url.searchParams.set('date', ref.date);
+  url.searchParams.set(isPermanent(ref.date) ? 'circuit' : 'date', ref.date);
   url.searchParams.set('challenge', ref.runId);
   return url.toString();
 }

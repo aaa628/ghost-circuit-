@@ -12,9 +12,10 @@
  */
 import { SKILLS, runAutopilot, type DriverSkill } from '../game/ai/Autopilot';
 import { decodeGhost, type GhostFrames } from '../game/ghost/GhostCodec';
+import { PERMANENT_CIRCUITS, isCircuitKey, isPermanent } from '../game/track/Circuits';
 import { generateTrack } from '../game/track/TrackGenerator';
 import type { Track } from '../game/track/TrackTypes';
-import { isDateKey, shiftDateKey, utcDateKey } from '../game/util/date';
+import { shiftDateKey, utcDateKey } from '../game/util/date';
 import {
   formatTime,
   isRunId,
@@ -43,8 +44,8 @@ import { pruneByDate, readJson, readString, writeJson, writeString } from './sto
 
 const API_TIMEOUT_MS = 6000;
 const NICK_KEY = 'gc:v1:nickname';
-const PB_PREFIX = 'gc:v1:pb:';
-const OFFLINE_PREFIX = 'gc:v1:offline:';
+const PB_PREFIX = 'gc:v2:pb:';
+const OFFLINE_PREFIX = 'gc:v2:offline:';
 
 export type ServiceMode = 'online' | 'offline';
 
@@ -256,8 +257,7 @@ export class LeaderboardService {
       console.warn('[leaderboard] API unavailable, using offline leaderboard', err);
       this.goOffline();
     }
-    const today = this.today();
-    pruneByDate(OFFLINE_PREFIX, [today, shiftDateKey(today, -1)]);
+    pruneByDate(OFFLINE_PREFIX, this.storedDates());
   }
 
   private goOffline(): void {
@@ -296,9 +296,10 @@ export class LeaderboardService {
     return true;
   }
 
+  /** Circuits whose offline boards are kept: today, yesterday and the all-time ones. */
   private storedDates(): string[] {
     const t = this.today();
-    return [t, shiftDateKey(t, -1)];
+    return [t, shiftDateKey(t, -1), ...PERMANENT_CIRCUITS.map((c) => c.id)];
   }
 
   async getLeaderboard(date: string, limit = 10): Promise<LeaderboardResponse> {
@@ -448,16 +449,24 @@ export class LeaderboardService {
   decodeChallengeUrl(url: string): ChallengeRef | null {
     try {
       const u = new URL(url);
-      const date = u.searchParams.get('date');
+      const date = u.searchParams.get('date') ?? u.searchParams.get('circuit');
       const runId = u.searchParams.get('challenge');
-      return isDateKey(date) && isRunId(runId) ? { date, runId } : null;
+      return isCircuitKey(date) && isRunId(runId) ? { date, runId } : null;
     } catch {
       return null;
     }
   }
 
+  /** True if a finished run on this circuit can be ranked right now. */
+  isRanked(circuit: string): boolean {
+    return isPermanent(circuit) || circuit === this.today();
+  }
+
   shareSnippet(timeMs: number, track: Track, link: string | null): string {
-    const base = `I set ${formatTime(timeMs)}s on today's Ghost Circuit (#${track.circuitNo} ${track.name}) — beat my ghost!`;
+    const where = isPermanent(track.dateKey)
+      ? `Ghost Circuit's all-time ${track.name}`
+      : `today's Ghost Circuit (#${track.circuitNo} ${track.name})`;
+    const base = `I set ${formatTime(timeMs)}s on ${where} — beat my ghost!`;
     return link ? `${base} ${link}` : base;
   }
 }

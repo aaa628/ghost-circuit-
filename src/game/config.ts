@@ -92,16 +92,16 @@ export const COLLISION = {
 export const TRACK = {
   /** Resample spacing for the centerline polyline, world units. */
   STEP: 10,
-  HALF_WIDTH: 74,
+  HALF_WIDTH: 90,
   NARROW_MULT: 0.78,
-  WIDE_MULT: 1.85,
+  WIDE_MULT: 1.7,
   ARENA_MULT: 1.3,
   /** Minimum clear space between the walls of unrelated track sections. */
   WALL_GAP: 84,
   /** Minimum centerline radius as a multiple of the local half-width. */
   MIN_RADIUS_MULT: 1.7,
-  MIN_LENGTH: 6800,
-  MAX_LENGTH: 13200,
+  MIN_LENGTH: 7400,
+  MAX_LENGTH: 15000,
   /** The car spawns this far behind the start/finish line. */
   SPAWN_BACK: 46,
   /** Obstacle-free distance after the line and before it. */
@@ -158,7 +158,7 @@ export const COLORS = {
 // ─── Camera ─────────────────────────────────────────────────────────────────
 export const CAMERA = {
   /** World units that should fit across the shorter screen dimension. */
-  VIEW_SPAN: 660,
+  VIEW_SPAN: 700,
   MIN_ZOOM: 0.45,
   MAX_ZOOM: 1.6,
   LOOK_AHEAD_S: 0.32,

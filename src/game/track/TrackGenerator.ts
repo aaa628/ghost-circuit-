@@ -14,6 +14,7 @@
  */
 import { CAR, TRACK } from '../config';
 import { circuitNumber, dayIndex } from '../util/date';
+import { permanentCircuit } from './Circuits';
 import { TAU, clamp, smoothstep, wrapAngle } from '../util/math';
 import { Rng, hashString } from '../util/prng';
 import type {
@@ -51,8 +52,8 @@ const ARCHETYPES: readonly Archetype[] = [
     points: [9, 11],
     radial: [0.66, 1.0],
     hairpins: [0, 1],
-    rx: 1800,
-    ry: 1200,
+    rx: 2016,
+    ry: 1344,
     wiggle: 0,
     wiggleFreq: 0,
     plan: { split: [0, 1], tunnel: [0, 1], sweeper: [1, 2], gate: [0, 1], chicane: [0, 1], pulsar: [1, 2], boost: [2, 3] },
@@ -64,8 +65,8 @@ const ARCHETYPES: readonly Archetype[] = [
     points: [8, 10],
     radial: [0.74, 1.0],
     hairpins: [2, 3],
-    rx: 1920,
-    ry: 1272,
+    rx: 2150,
+    ry: 1425,
     wiggle: 0,
     wiggleFreq: 0,
     plan: { split: [0, 1], tunnel: [0, 1], sweeper: [1, 1], gate: [0, 1], chicane: [0, 1], pulsar: [1, 2], boost: [2, 3] },
@@ -77,8 +78,8 @@ const ARCHETYPES: readonly Archetype[] = [
     points: [11, 14],
     radial: [0.5, 1.0],
     hairpins: [1, 2],
-    rx: 1860,
-    ry: 1296,
+    rx: 2083,
+    ry: 1452,
     wiggle: 0,
     wiggleFreq: 0,
     plan: { split: [0, 1], tunnel: [0, 1], sweeper: [1, 2], gate: [1, 1], chicane: [1, 1], pulsar: [1, 2], boost: [1, 2] },
@@ -90,8 +91,8 @@ const ARCHETYPES: readonly Archetype[] = [
     points: [6, 8],
     radial: [0.8, 1.0],
     hairpins: [0, 1],
-    rx: 2100,
-    ry: 1260,
+    rx: 2352,
+    ry: 1411,
     wiggle: 0,
     wiggleFreq: 0,
     plan: { split: [1, 1], tunnel: [0, 1], sweeper: [1, 1], gate: [0, 1], chicane: [0, 1], pulsar: [1, 1], boost: [3, 4] },
@@ -103,8 +104,8 @@ const ARCHETYPES: readonly Archetype[] = [
     points: [12, 15],
     radial: [0.82, 1.0],
     hairpins: [0, 1],
-    rx: 2220,
-    ry: 1080,
+    rx: 2486,
+    ry: 1210,
     wiggle: 0.17,
     wiggleFreq: 4,
     plan: { split: [0, 1], tunnel: [1, 1], sweeper: [1, 1], gate: [0, 1], chicane: [0, 1], pulsar: [1, 2], boost: [2, 3] },
@@ -963,16 +964,19 @@ export function archetypeFor(dateKey: string): ArchetypeId {
 }
 
 function pickArchetype(dateKey: string): Archetype {
+  const perm = permanentCircuit(dateKey);
+  if (perm) return ARCHETYPES.find((a) => a.id === perm.archetype) ?? (ARCHETYPES[0] as Archetype);
   const flip = hashString(`arch:${dateKey}`) & 1;
   const i = (2 * dayIndex(dateKey) + flip) % ARCHETYPES.length;
   return ARCHETYPES[(i + ARCHETYPES.length) % ARCHETYPES.length] as Archetype;
 }
 
-/** Generate (or fetch from cache) the circuit for a UTC date key. */
+/** Generate (or fetch from cache) a circuit: a daily date key or a permanent id. */
 export function generateTrack(dateKey: string): Track {
   const cached = cache.get(dateKey);
   if (cached) return cached;
-  const seed = hashString(`ghost-circuit:${dateKey}`);
+  const perm = permanentCircuit(dateKey);
+  const seed = hashString(perm ? perm.seed : `ghost-circuit:${dateKey}`);
   const rng = new Rng(seed);
   const arch = pickArchetype(dateKey);
   let track: Track | null = null;
@@ -984,6 +988,7 @@ export function generateTrack(dateKey: string): Track {
     const fallback = buildFallbackLoop(rng);
     track = assemble(dateKey, seed, arch, fallback, rng, MAX_ATTEMPTS + 1);
   }
+  if (perm) track = { ...track, name: perm.name, circuitNo: 0 };
   if (cache.size > 8) cache.clear();
   cache.set(dateKey, track);
   return track;

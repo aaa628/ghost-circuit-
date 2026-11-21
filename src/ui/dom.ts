@@ -52,6 +52,7 @@ const ICONS = {
   flag: 'M5 3h2v18H5V3zm3 1h11l-2 4 2 4H8V4z',
   copy: 'M8 3h11v13h-2V5H8V3zM5 7h10v14H5V7z',
   comment: 'M4 4h16v12H8l-4 4V4z',
+  menu: 'M3 5h18v3H3V5zm0 5.5h18v3H3v-3zM3 16h18v3H3v-3z',
 } as const;
 
 export type IconName = keyof typeof ICONS;

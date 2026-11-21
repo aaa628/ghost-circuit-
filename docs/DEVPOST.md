@@ -17,7 +17,8 @@ everyone else's game. Racing games already have the perfect mechanic for that: g
 
 ## What it does
 Every day at 00:00 UTC a new miniature circuit unlocks and is posted to the subreddit
-automatically. Everyone gets the identical track — same corners, boost pads and hazards. You have
+automatically. Two permanent circuits (Glitch Ridge and Static Vault) add all-time leaderboards
+that never reset. Everyone gets the identical track — same corners, boost pads and hazards. You have
 60 seconds to clear the checkpoints in order and cross the line. You race translucent ghosts of
 real players: your personal best, today's #1, yesterday's champion, or anyone who challenged you.
 A live split under the timer tells you, to the millisecond, whether you're ahead or behind.

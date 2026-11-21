@@ -24,7 +24,10 @@ export class TrackPreview {
   private readonly pose: GhostPose = { x: 0, y: 0, r: 0, boosting: false, finished: false };
   private readonly onResize: () => void;
 
-  constructor(private readonly canvas: HTMLCanvasElement) {
+  constructor(
+    private readonly canvas: HTMLCanvasElement,
+    private readonly opts: { topPad?: number; pad?: number } = {},
+  ) {
     this.ctx = canvas.getContext('2d');
     this.onResize = () => this.layout();
     window.addEventListener('resize', this.onResize);
@@ -50,9 +53,9 @@ export class TrackPreview {
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     const b = track.bounds;
-    const pad = 10;
-    // Leave room at the top for the circuit name overlay.
-    const top = Math.min(78, h * 0.3);
+    const pad = this.opts.pad ?? 10;
+    // Leave room at the top for the circuit name overlay (splash only).
+    const top = this.opts.topPad ?? Math.min(78, h * 0.3);
     const bw = b.maxX - b.minX;
     const bh = b.maxY - b.minY;
     this.scale = Math.min((w - pad * 2) / bw, (h - top - pad) / bh);

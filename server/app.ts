@@ -13,7 +13,8 @@
 import express, { type Request, type Response, type Router } from 'express';
 import { SUBMIT_GRACE_MS } from '../src/game/config';
 import { generateTrack } from '../src/game/track/TrackGenerator';
-import { isDateKey, shiftDateKey, utcDateKey } from '../src/game/util/date';
+import { boardLabel, isCircuitKey, isPermanent } from '../src/game/track/Circuits';
+import { shiftDateKey, utcDateKey } from '../src/game/util/date';
 import {
   formatTime,
   isRunId,
@@ -44,6 +45,11 @@ export type ApiDeps = {
 const send = <T>(res: Response, status: number, body: T): void => {
   res.status(status).json(body);
 };
+
+/** True if runs on this circuit can be ranked right now. */
+export function circuitOpen(circuit: string, now: number): boolean {
+  return isPermanent(circuit) || acceptedSubmissionDates(now).includes(circuit);
+}
 
 /** Dates a submission may target right now (today, plus yesterday during the grace window). */
 export function acceptedSubmissionDates(now: number): string[] {
@@ -93,7 +99,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     '/leaderboard/:date',
     wrap(async (req, res) => {
       const date = String(req.params.date);
-      if (!isDateKey(date)) return send<ApiError>(res, 400, { error: 'invalid date' });
+      if (!isCircuitKey(date)) return send<ApiError>(res, 400, { error: 'invalid circuit' });
       const limitRaw = Number(req.query.limit ?? 10);
       const limit = Number.isFinite(limitRaw) ? Math.min(50, Math.max(1, Math.floor(limitRaw))) : 10;
       const username = await deps.getUsername(req);
@@ -105,7 +111,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     '/champion/:date',
     wrap(async (req, res) => {
       const date = String(req.params.date);
-      if (!isDateKey(date)) return send<ApiError>(res, 400, { error: 'invalid date' });
+      if (!isCircuitKey(date)) return send<ApiError>(res, 400, { error: 'invalid circuit' });
       send<ChampionResponse>(res, 200, { date, champion: await store.getChampion(date) });
     }),
   );
@@ -129,8 +135,8 @@ export function createApiRouter(deps: ApiDeps): Router {
       const body: unknown = req.body;
       if (!body || typeof body !== 'object') return send<SubmitRunResponse>(res, 400, { accepted: false, reason: 'bad request' });
       const { dateKey, timeMs, ghostData, share } = body as Record<string, unknown>;
-      if (!isDateKey(dateKey)) return send<SubmitRunResponse>(res, 400, { accepted: false, reason: 'invalid date' });
-      if (!acceptedSubmissionDates(deps.now()).includes(dateKey)) {
+      if (!isCircuitKey(dateKey)) return send<SubmitRunResponse>(res, 400, { accepted: false, reason: 'invalid circuit' });
+      if (!circuitOpen(dateKey, deps.now())) {
         return send<SubmitRunResponse>(res, 409, { accepted: false, reason: 'this circuit is closed — race today’s track' });
       }
       if (!(await store.allowSubmission(username))) {
@@ -164,7 +170,8 @@ export function createApiRouter(deps: ApiDeps): Router {
       if (!run || run.username !== username) return send<CommentResponse>(res, 403, { ok: false, reason: 'not your run' });
       const track = generateTrack(run.dateKey);
       const text =
-        `🏁 I set **${formatTime(run.timeMs)}s** on Ghost Circuit #${track.circuitNo} — *${track.name}*. ` +
+        `🏁 I set **${formatTime(run.timeMs)}s** on Ghost Circuit — *${track.name}*` +
+        `${isPermanent(run.dateKey) ? ' (all-time board)' : ` (#${track.circuitNo}, ${boardLabel(run.dateKey)})`}. ` +
         `Think you can beat my ghost?\n\nChallenge code: \`${toChallengeCode(run.id)}\` ` +
         `(open the game → Leaderboard → Enter code)`;
       await deps.postComment(req, text);

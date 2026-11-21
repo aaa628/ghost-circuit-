@@ -95,9 +95,11 @@ export type LeaderboardPanelCallbacks = {
 export class LeaderboardPanel {
   readonly root: HTMLElement;
   private readonly list: HTMLElement;
-  private readonly tabs: HTMLButtonElement[] = [];
+  private tabs: HTMLButtonElement[] = [];
+  private readonly tabRow: HTMLElement;
+  private tabRemovers: Array<() => void> = [];
   private readonly removers: Array<() => void> = [];
-  private dates: [string, string] = ['', ''];
+  private dates: string[] = [];
   private active = 0;
   private me: string | null = null;
   private loadToken = 0;
@@ -107,12 +109,7 @@ export class LeaderboardPanel {
     const closeBtn = h('button', { class: 'icon-btn panel-close', type: 'button', 'aria-label': 'Close leaderboard' }, icon('close'));
     this.removers.push(listen(closeBtn, 'click', () => cb.onClose()));
     const tabRow = h('div', { class: 'tabs', role: 'tablist' });
-    ['Today', 'Yesterday'].forEach((label, i) => {
-      const t = h('button', { class: 'tab', type: 'button', role: 'tab', text: label });
-      this.removers.push(listen(t, 'click', () => this.select(i)));
-      this.tabs.push(t);
-      tabRow.append(t);
-    });
+    this.tabRow = tabRow;
     this.list = h('div', { class: 'lb-container' });
 
     const codeInput = h('input', {
@@ -172,8 +169,18 @@ export class LeaderboardPanel {
     return this.root.classList.contains('open');
   }
 
-  open(today: string, yesterday: string, me: string | null): void {
-    this.dates = [today, yesterday];
+  /** Open with one tab per board (e.g. Today, Yesterday, and each all-time circuit). */
+  open(tabs: ReadonlyArray<{ label: string; date: string }>, active: number, me: string | null): void {
+    for (const r of this.tabRemovers.splice(0)) r();
+    this.tabRow.replaceChildren();
+    this.tabs = tabs.map((t, i) => {
+      const b = h('button', { class: 'tab', type: 'button', role: 'tab', text: t.label });
+      this.tabRemovers.push(listen(b, 'click', () => this.select(i)));
+      this.tabRow.append(b);
+      return b;
+    });
+    this.dates = tabs.map((t) => t.date);
+    this.active = Math.max(0, Math.min(active, tabs.length - 1));
     this.me = me;
     if (this.nickInput && me) this.nickInput.value = me;
     this.root.classList.add('open');
@@ -196,7 +203,7 @@ export class LeaderboardPanel {
       t.classList.toggle('active', k === i);
       t.setAttribute('aria-selected', k === i ? 'true' : 'false');
     });
-    const date = this.dates[i] ?? this.dates[0];
+    const date = this.dates[i] ?? this.dates[0] ?? '';
     const token = ++this.loadToken;
     renderLeaderboardList(this.list, null, this.me, null, { loading: true });
     this.cb
@@ -212,6 +219,7 @@ export class LeaderboardPanel {
   }
 
   dispose(): void {
+    for (const r of this.tabRemovers.splice(0)) r();
     for (const r of this.removers.splice(0)) r();
     this.root.remove();
   }

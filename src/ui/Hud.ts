@@ -8,12 +8,14 @@
 import { GHOST_SLOTS, GHOST_STYLE, MAX_TIME_MS, type GhostSlot } from '../game/config';
 import type { FrameInfo } from '../game/scenes/RaceScene';
 import type { Track } from '../game/track/TrackTypes';
-import { formatCountdown, formatDateLabel } from '../game/util/date';
+import { circuitBadge } from '../game/track/Circuits';
+import { formatCountdown } from '../game/util/date';
 import { formatDelta, formatTime } from '../shared/api';
 import { h, icon, isTouchDevice, listen, setText, toggleClass } from './dom';
 import { Minimap } from './Minimap';
 
 export type HudCallbacks = {
+  onMenu: () => void;
   onToggleGhost: (slot: GhostSlot) => void;
   onToggleMute: () => void;
   onLeaderboard: () => void;
@@ -50,7 +52,7 @@ export class Hud {
   private readonly removers: Array<() => void> = [];
   private splitTimer: ReturnType<typeof setTimeout> | null = null;
   private lastCountdownText = '';
-  private nextDayAt = 0;
+  private nextDayAt: number | null = 0;
 
   constructor(parent: HTMLElement, cb: HudCallbacks) {
     this.dateBadge = h('span', { class: 'badge-date' });
@@ -82,6 +84,7 @@ export class Hud {
     }
 
     this.muteBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Mute sound', title: 'Sound' });
+    const menuBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Main menu', title: 'Menu' }, icon('menu'));
     const boardBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Leaderboard', title: 'Leaderboard' }, icon('trophy'));
     const gearBtn = h('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Settings', title: 'Settings' }, icon('gear'));
     const restartBtn = h(
@@ -91,6 +94,7 @@ export class Hud {
       h('kbd', { text: 'R' }),
     );
     this.removers.push(
+      listen(menuBtn, 'click', () => cb.onMenu()),
       listen(this.muteBtn, 'click', () => cb.onToggleMute()),
       listen(boardBtn, 'click', () => cb.onLeaderboard()),
       listen(gearBtn, 'click', () => cb.onSettings()),
@@ -125,7 +129,7 @@ export class Hud {
         this.minimap.el,
       ),
       h('div', { class: 'hud-tc' }, this.timerBox, h('div', { class: 'deltas' }, this.deltaPb, this.deltaTarget), this.banner),
-      h('div', { class: 'hud-tr' }, chipRow, h('div', { class: 'hud-btns' }, this.muteBtn, boardBtn, gearBtn, restartBtn)),
+      h('div', { class: 'hud-tr' }, chipRow, h('div', { class: 'hud-btns' }, menuBtn, this.muteBtn, boardBtn, gearBtn, restartBtn)),
       this.hint,
       this.countdown,
       this.split,
@@ -134,8 +138,9 @@ export class Hud {
     this.setOffline(false);
   }
 
-  setTrack(track: Track, nextDayAt: number): void {
-    setText(this.dateBadge, `${formatDateLabel(track.dateKey)} · #${track.circuitNo}`);
+  /** nextDayAt: when the daily rolls over, or null for an all-time circuit. */
+  setTrack(track: Track, nextDayAt: number | null): void {
+    setText(this.dateBadge, circuitBadge(track.dateKey, track.circuitNo));
     setText(this.trackName, track.name);
     this.minimap.setTrack(track);
     this.nextDayAt = nextDayAt;
@@ -204,7 +209,8 @@ export class Hud {
     const ready = f.status === 'ready';
     toggleClass(this.hint, 'show', ready && f.countdown === null);
     if (ready) {
-      const text = `Next circuit in ${formatCountdown(this.nextDayAt - Date.now())}`;
+      const text =
+        this.nextDayAt === null ? 'All-time board · never resets' : `Next circuit in ${formatCountdown(this.nextDayAt - Date.now())}`;
       if (text !== this.lastCountdownText) {
         this.lastCountdownText = text;
         setText(this.hintNext, text);

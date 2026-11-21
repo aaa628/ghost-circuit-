@@ -5,6 +5,7 @@ import { CAR, MAX_TIME_MS, TRACK } from '../src/game/config';
 import { decodeGhost, encodeGhost } from '../src/game/ghost/GhostCodec';
 import { ColliderPool, collectColliders } from '../src/game/track/Obstacles';
 import { generateTrack, archetypeFor } from '../src/game/track/TrackGenerator';
+import { PERMANENT_CIRCUITS, isCircuitKey } from '../src/game/track/Circuits';
 import { __internal } from '../src/game/track/TrackGenerator';
 import { shiftDateKey, utcDateKey, isDateKey, msUntilNextUtcDay } from '../src/game/util/date';
 import { hashString, mulberry32 } from '../src/game/util/prng';
@@ -98,6 +99,26 @@ describe('track generator', () => {
         }
       }
     }
+  });
+});
+
+describe('permanent circuits', () => {
+  it('are fixed, named, valid and completable', () => {
+    for (const c of PERMANENT_CIRCUITS) {
+      assert.ok(isCircuitKey(c.id));
+      const t = generateTrack(c.id);
+      assert.equal(t.name, c.name);
+      assert.equal(t.archetype, c.archetype);
+      assert.ok(__internal.clearanceOk(t.xs, t.ys, t.hw, t.step), `${c.id} overlaps itself`);
+      const lap = runAutopilot(t, SKILLS.rookie);
+      assert.ok(lap.finished && lap.timeMs < 40_000, `${c.id} not completable`);
+      assert.ok(validateRun(t, lap.timeMs, lap.ghostData).ok);
+    }
+    assert.notDeepEqual(
+      Array.from(generateTrack('perm-ridge').xs.slice(0, 20)),
+      Array.from(generateTrack('perm-vault').xs.slice(0, 20)),
+    );
+    assert.ok(!isCircuitKey('perm-nope'));
   });
 });
 

@@ -27,6 +27,10 @@ export type PostRunView = {
   canShare: boolean;
   champLabel: string | null;
   ranked: boolean;
+  /** e.g. "Top 10 today" / "Top 10 all-time". */
+  boardTitle: string;
+  /** e.g. "ranked on today’s circuit" / "ranked on the all-time board". */
+  rankedText: string;
 };
 
 export type PostRunCallbacks = {
@@ -62,6 +66,7 @@ export class PostRunModal {
   private readonly noteText: HTMLElement;
   private readonly noteBtn: HTMLButtonElement;
   private readonly board: HTMLElement;
+  private readonly boardHead: HTMLElement;
   private readonly shareBtn: HTMLButtonElement;
   private readonly champBtn: HTMLButtonElement;
   private readonly champLabel: HTMLElement;
@@ -99,7 +104,7 @@ export class PostRunModal {
       closeBtn,
       h('div', { class: 'pr-hero' }, this.title, this.time, this.sub, this.versus, this.deltas, this.standing, this.note),
       h('div', { class: 'pr-actions' }, retryBtn, this.shareBtn, this.champBtn),
-      h('div', { class: 'pr-board-head', text: 'Top 10 today' }),
+      (this.boardHead = h('div', { class: 'pr-board-head', text: 'Top 10 today' })),
       this.board,
     );
     this.root = h('div', { class: 'modal-backdrop postrun hidden' }, this.card);
@@ -136,7 +141,7 @@ export class PostRunModal {
       v.status === 'dnf'
         ? `Reached checkpoint ${v.checkpointsCleared}/${v.checkpointTotal} — so close. Press R and go again.`
         : v.ranked
-          ? 'Seconds · ranked on today’s circuit'
+          ? `Seconds · ${v.rankedText}`
           : 'Seconds · practice (archive circuits aren’t ranked)',
     );
 
@@ -187,6 +192,7 @@ export class PostRunModal {
     this.champBtn.hidden = !v.champLabel;
     if (v.champLabel) setText(this.champLabel, v.champLabel);
 
+    setText(this.boardHead, v.boardTitle);
     renderLeaderboardList(
       this.board,
       v.leaderboard,

@@ -28,15 +28,15 @@ const GATE_EXTEND = 20;
  * Speed model. The allowed speed follows a physics envelope: BOOST_MAX_SPEED
  * while a boost is active, decaying back toward MAX_SPEED afterwards. Limits
  * were calibrated on 1,500 autopilot + noisy-input laps over 150 circuits:
- * legit laps peak at 1.29× the envelope on isolated samples (moving hazards
- * can bat the car) and exceed it by 3% on at most ~10% of samples, while a lap sped up by 7%
- * exceeds it on 19%+ of samples.
+ * legit laps peak at ~1.3× the envelope on isolated samples (moving hazards
+ * can bat the car) and exceed it by 4% on at most ~10% of samples, while a lap
+ * sped up by 7% exceeds it on 20%+ of samples.
  */
 const ENVELOPE_DECAY_PER_S = 1.4;
 const QUANT_SLACK_UNITS = 0.3;
 const HARD_RATIO = 1.5;
-const SOFT_RATIO = 1.03;
-const SOFT_MAX_FRACTION = 0.14;
+const SOFT_RATIO = 1.04;
+const SOFT_MAX_FRACTION = 0.15;
 const SOFT_MIN_ALLOWED = 10;
 const MAX_MEAN_SPEED = CAR.MAX_SPEED * 1.045;
 /** A boost flag is only legitimate this long after touching a pad. */

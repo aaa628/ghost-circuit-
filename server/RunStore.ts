@@ -5,10 +5,12 @@
  * production this class receives `redis` from `@devvit/web/server` directly;
  * locally it receives the in-memory `MemoryRedis` (same semantics).
  *
- * Keys (all prefixed `gc:v1:`):
+ * Keys (all prefixed `gc:v2:`). `{date}` is a circuit key: a UTC date for the
+ * daily circuit, or a permanent circuit id (`perm-*`) whose board never expires.
  *   lb:{date}      ZSET  username → best timeMs (ascending = faster)
  *   best:{date}    HASH  username → runId of that best
- *   run:{id}       STR   RunRecord JSON (with ghost), TTL 45d (best) / 10d (shared)
+ *   run:{id}       STR   RunRecord JSON (with ghost), TTL 45d (daily best) / none
+ *                        (all-time best) / 10d (shared or superseded)
  *   post:{date}    STR   Reddit post id of the daily post
  *   post:latest    STR   JSON { date, postId }
  *   rl:{user}      STR   submission rate-limit token (short TTL)
@@ -21,6 +23,7 @@ import {
   type RunRecord,
   type RunSummary,
 } from '../src/shared/api';
+import { isPermanent } from '../src/game/track/Circuits';
 
 export type ZMember = { member: string; score: number };
 
@@ -45,7 +48,7 @@ export type RedisLike = {
   hMGet(key: string, fields: string[]): Promise<(string | null)[]>;
 };
 
-const P = 'gc:v1:';
+const P = 'gc:v2:';
 const DAY_S = 86_400;
 const BEST_TTL_S = 45 * DAY_S;
 const SHARED_TTL_S = 10 * DAY_S;
@@ -163,14 +166,16 @@ export class RunStore {
     const recordMs = recordList[0]?.score;
     const isRecord = isPersonalBest && (recordMs === undefined || timeMs < recordMs);
     const run: RunRecord = { id: newRunId(), username, dateKey, timeMs, ghostData, createdAt: this.now() };
+    const allTime = isPermanent(dateKey);
     const runKey = `${P}run:${run.id}`;
     await this.redis.set(runKey, JSON.stringify(run));
-    await this.redis.expire(runKey, isPersonalBest ? BEST_TTL_S : SHARED_TTL_S);
+    if (!isPersonalBest) await this.redis.expire(runKey, SHARED_TTL_S);
+    else if (!allTime) await this.redis.expire(runKey, BEST_TTL_S);
     if (isPersonalBest) {
       const oldId = await this.redis.hGet(bestKey, username);
       await this.redis.zAdd(lbKey, { member: username, score: timeMs });
       await this.redis.hSet(bestKey, { [username]: run.id });
-      await Promise.all([this.redis.expire(lbKey, BEST_TTL_S), this.redis.expire(bestKey, BEST_TTL_S)]);
+      if (!allTime) await Promise.all([this.redis.expire(lbKey, BEST_TTL_S), this.redis.expire(bestKey, BEST_TTL_S)]);
       // The superseded best may still be referenced by a challenge link.
       if (oldId && oldId !== run.id) await this.redis.expire(`${P}run:${oldId}`, SHARED_TTL_S);
     }

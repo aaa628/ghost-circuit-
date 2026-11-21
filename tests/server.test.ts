@@ -92,6 +92,18 @@ describe('REST API', () => {
     assert.equal(champ.champion?.id, json.run.id);
   });
 
+  it('ranks all-time circuits on any day and keeps their board', async () => {
+    const track = generateTrack('perm-ridge');
+    const lap = runAutopilot(track, SKILLS.good);
+    assert.ok(lap.finished);
+    const { status, json } = await post('/runs', { dateKey: 'perm-ridge', timeMs: lap.timeMs, ghostData: lap.ghostData }, 'alltimer_1');
+    assert.equal(status, 200);
+    assert.ok(json.accepted);
+    const lb = (await (await fetch(`${base}/leaderboard/perm-ridge`)).json()) as LeaderboardResponse;
+    assert.equal(lb.entries[0]?.username, 'alltimer_1');
+    assert.equal((await fetch(`${base}/leaderboard/perm-unknown`)).status, 400);
+  });
+
   it('rejects tampered, anonymous, closed-day and malformed submissions', async () => {
     const track = generateTrack(today);
     const lap = runAutopilot(track, SKILLS.casual);

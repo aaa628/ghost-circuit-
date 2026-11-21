@@ -8,7 +8,19 @@ Every day at 00:00 UTC a brand-new miniature circuit unlocks. Every Redditor on 
 translucent **ghost** that everyone else races against — and you can challenge anyone in the
 comments to beat yours, head-to-head.
 
-Visual identity: flat black, burgundy (#6D001A) and white, with racing curbs and no glow.
+Visual identity: flat black, burgundy (#6D001A) and white, with racing curbs, pre-lit 3D cars and
+no glow. The main menu is a retro-desktop "takeover": stacked OS dialog windows over a dithered,
+halftone-printed backdrop torn by burgundy paper strips.
+
+**Three circuits:**
+
+| Circuit | Board | Notes |
+|---|---|---|
+| **Daily** | today only | a brand-new generated circuit every day at 00:00 UTC |
+| **GLITCH RIDGE** | all-time | permanent hairpin course, never resets |
+| **STATIC VAULT** | all-time | permanent high-speed course, never resets |
+
+Each circuit has its own leaderboard, ghosts (PB, #1, rivals) and challenge links.
 
 Built for **Reddit's Game of the Day Hackathon 2026** on **Devvit Web** (Phaser 3 + TypeScript + Vite,
 Express server on Devvit Redis).
@@ -25,6 +37,7 @@ Express server on Devvit Redis).
 | Drift (tight turns) | **Space** (or Shift) | **DRIFT** |
 | Instant restart | **R** | **⟲** |
 
+0. **Pick a circuit** in the main menu (☰ in the HUD brings it back).
 1. **Go.** The clock starts on your first input (or a 3-2-1-GO countdown — toggle in ⚙).
 2. **Hit the checkpoints in order** (`CP 2/5`), then cross the checkered finish line — all within **60.000s**.
    Run out of time and it's a **DNF**; press **R** and you're back on the grid in a blink.
@@ -131,6 +144,7 @@ src/
   game/
     config.ts               Phaser config + all tuning constants (FIXED_DT, speeds, MAX_TIME_MS…)
     track/TrackGenerator.ts deterministic daily circuit + features + checkpoints
+    track/Circuits.ts       circuit registry: daily keys + the two all-time circuits
     track/Obstacles.ts      race-clock-synced hazard colliders (pure functions of elapsedMs)
     track/TrackQuery.ts     projections, gate crossings, progress
     physics/CarController.ts fixed-timestep arcade physics, drift, boost, wall sliding
@@ -142,6 +156,7 @@ src/
     ai/Autopilot.ts         deterministic driver (track validation, pace & seed ghosts)
     audio/SynthAudio.ts     procedural Web Audio
     input/InputController.ts keyboard + touch merge
+    render/CarModel.ts      low-poly car pre-rendered to a 72-angle lit sprite sheet
     render/*                track, hazards, procedural textures
     scenes/RaceScene.ts     Phaser scene: accumulator, camera, particles, ghosts
   services/
@@ -149,6 +164,7 @@ src/
                             challenge links, Yesterday's Champion loader, PB cache
     platform.ts             Reddit (Devvit) vs browser bridge
   shared/                   wire types + anti-cheat validator
+  ui/MainMenu.ts            retro-desktop main menu (menuArt.ts: pixel type, dither, halftone)
   ui/                       HUD, minimap, touch controls, post-run, leaderboard,
                             share, settings, toasts (DOM; user text via textContent only)
   splash/                   feed splash + canvas track preview
@@ -168,10 +184,14 @@ scripts/smoke-e2e.cjs       optional Playwright smoke test
 | Method | Path | |
 |---|---|---|
 | GET | `/api/init` | platform, username, today, post date, today's post id |
-| GET | `/api/leaderboard/:date` | top N (default 10) + your pinned standing and gap to next |
-| GET | `/api/champion/:date` | that day's #1 run with ghost |
+| GET | `/api/leaderboard/:circuit` | top N (default 10) + your pinned standing and gap to next |
+| GET | `/api/champion/:circuit` | that circuit's #1 run with ghost |
 | GET | `/api/run/:runId` | a run with ghost (challenges) |
 | POST | `/api/runs` | `{dateKey, timeMs, ghostData, share?}` → validated, ranked |
+
+`:circuit` / `dateKey` is a circuit key: a UTC date (`2026-11-21`) for the daily circuit, or a
+permanent id (`perm-ridge`, `perm-vault`) for the all-time boards (defined in
+`src/game/track/Circuits.ts`). Daily boards accept runs only on their day; all-time boards always.
 | POST | `/api/comment` | Reddit only: post a challenge comment as the user |
 
 ---
@@ -188,7 +208,8 @@ npm run type-check
 npm start            # production standalone build served from http://localhost:8787
 ```
 
-Challenge links in standalone mode look like `http://localhost:5173/?date=2026-11-21&challenge=<runId>`.
+Challenge links in standalone mode look like `http://localhost:5173/?date=2026-11-21&challenge=<runId>`
+(or `?circuit=perm-ridge&challenge=<runId>` for the all-time circuits).
 
 ### On Reddit (Devvit)
 
@@ -204,5 +225,5 @@ Then, as a moderator of your test subreddit, use the subreddit menu
 
 > **Determinism contract.** Circuits and ghosts depend on the generator and physics constants.
 > Don't change `TrackGenerator.ts`, `config.ts` physics/track values or the PRNG after launch
-> without bumping the storage prefix (`gc:v1:`) — otherwise stored ghosts no longer match their
+> without bumping the storage prefix (currently `gc:v2:`) — otherwise stored ghosts no longer match their
 > circuits (the client safely hides ghosts that fail validation).

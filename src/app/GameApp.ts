@@ -6,6 +6,7 @@
  *   challenge  a specific player's ghost locked onto the grid (head-to-head)
  *   champ      yesterday's circuit vs yesterday's #1 ("Challenge Yesterday's Champ")
  *   archive    an older daily post's circuit (practice, not ranked)
+ *   alltime    a permanent circuit with an all-time leaderboard (always ranked)
  */
 import Phaser from 'phaser';
 import { GHOST_SLOTS, GHOST_STYLE, createPhaserConfig, type GhostSlot } from '../game/config';
@@ -13,6 +14,7 @@ import { SynthAudio } from '../game/audio/SynthAudio';
 import { GhostTimeline } from '../game/ghost/GhostTimeline';
 import { InputController } from '../game/input/InputController';
 import { RaceScene, type FrameInfo, type RunResult } from '../game/scenes/RaceScene';
+import { PERMANENT_CIRCUITS, isPermanent, permanentCircuit } from '../game/track/Circuits';
 import { generateTrack } from '../game/track/TrackGenerator';
 import type { Track } from '../game/track/TrackTypes';
 import { dateKeyToMs, formatDateLabel, msUntilNextUtcDay, shiftDateKey } from '../game/util/date';
@@ -36,6 +38,7 @@ import {
 } from '../shared/api';
 import { h } from '../ui/dom';
 import { Hud, type GhostChipState } from '../ui/Hud';
+import { MainMenu } from '../ui/MainMenu';
 import { LeaderboardPanel, setNamePrefix } from '../ui/LeaderboardPanel';
 import { PostRunModal, type Celebration, type PostRunView } from '../ui/PostRunModal';
 import { SettingsModal, type Settings } from '../ui/SettingsModal';
@@ -46,6 +49,7 @@ import { TouchControls } from '../ui/TouchControls';
 type Mode =
   | { kind: 'daily'; date: string }
   | { kind: 'archive'; date: string }
+  | { kind: 'alltime'; date: string }
   | { kind: 'champ'; date: string; run: RunRecord }
   | { kind: 'challenge'; date: string; run: RunRecord };
 
@@ -75,6 +79,8 @@ export class GameApp {
   private shareModal: ShareModal | null = null;
   private settingsModal: SettingsModal | null = null;
   private toaster: Toaster | null = null;
+  private menu: MainMenu | null = null;
+  private showMenuOnReady = false;
 
   private mode: Mode = { kind: 'daily', date: '' };
   private track: Track | null = null;
@@ -128,7 +134,9 @@ export class GameApp {
 
     this.mode = mode;
     this.track = generateTrack(mode.date);
-    this.hud?.setTrack(this.track, Date.now() + msUntilNextUtcDay(this.service.now()));
+    this.hud?.setTrack(this.track, this.nextDailyAt(mode.date));
+    this.buildMenu(today);
+    this.showMenuOnReady = mode.kind === 'daily' && !new URLSearchParams(location.search).has('autopilot');
 
     const scene = new RaceScene(
       {
@@ -156,6 +164,7 @@ export class GameApp {
     const ui = this.uiEl;
     this.toaster = new Toaster(ui);
     this.hud = new Hud(ui, {
+      onMenu: () => this.openMenu(),
       onToggleGhost: (slot) => this.toggleGhost(slot),
       onToggleMute: () => {
         this.audio.unlock();
@@ -235,12 +244,85 @@ export class GameApp {
     for (const slot of GHOST_SLOTS) scene.setGhostVisible(slot, this.visibility[slot]);
     this.applyModeUi();
     void this.loadGhosts();
+    if (this.showMenuOnReady) this.openMenu();
+  }
+
+  // ── Main menu ─────────────────────────────────────────────────────────────
+
+  private nextDailyAt(circuit: string): number | null {
+    return isPermanent(circuit) ? null : Date.now() + msUntilNextUtcDay(this.service.now());
+  }
+
+  private buildMenu(today: string): void {
+    const todayTrack = generateTrack(today);
+    this.menu = new MainMenu(
+      this.uiEl,
+      [
+        {
+          id: today,
+          kind: 'daily',
+          name: todayTrack.name,
+          tag: `DAILY · #${todayTrack.circuitNo}`,
+          tagline: 'New circuit every day at 00:00 UTC. Today’s board only.',
+          track: todayTrack,
+        },
+        ...PERMANENT_CIRCUITS.map((c) => ({
+          id: c.id,
+          kind: 'alltime' as const,
+          name: c.name,
+          tag: 'ALL-TIME',
+          tagline: c.tagline,
+          track: generateTrack(c.id),
+        })),
+      ],
+      {
+        onRace: (id) => {
+          this.audio.unlock();
+          this.audio.click();
+          this.menu?.hide();
+          this.setMode(isPermanent(id) ? { kind: 'alltime', date: id } : { kind: 'daily', date: id });
+        },
+        onBoards: () => this.openPanel(),
+        onHelp: () => {
+          this.settingsModal?.show(this.settings);
+          this.syncInputEnabled();
+        },
+        nextDailyAt: () => Date.now() + msUntilNextUtcDay(this.service.now()),
+      },
+    );
+  }
+
+  private openMenu(): void {
+    const menu = this.menu;
+    if (!menu) return;
+    this.postRun?.hide();
+    this.shareModal?.hide();
+    this.closePanel();
+    menu.setPlayer(this.service.username ? this.displayName(this.service.username) : 'GUEST (LOG IN TO RANK)');
+    menu.show();
+    this.scene?.restart(false);
+    this.syncInputEnabled();
+    const today = this.service.today();
+    for (const id of [today, ...PERMANENT_CIRCUITS.map((c) => c.id)]) {
+      this.service
+        .getLeaderboard(id, 1)
+        .then((lb) => {
+          const top = lb.entries[0];
+          const mine = lb.me?.timeMs ?? this.service.getPersonalBest(id)?.timeMs ?? null;
+          this.menu?.setStats(id, {
+            record: top ? `${formatTime(top.timeMs)} ${top.bot ? top.username : this.displayName(top.username)}` : null,
+            mine: mine === null ? null : `${formatTime(mine)}${lb.me ? ` (#${lb.me.rank})` : ''}`,
+            racers: lb.total,
+          });
+        })
+        .catch(() => undefined);
+    }
   }
 
   // ── Modes & ghosts ────────────────────────────────────────────────────────
 
   private get ranked(): boolean {
-    return this.mode.date === this.service.today() && this.mode.kind !== 'archive';
+    return this.mode.kind !== 'archive' && this.service.isRanked(this.mode.date);
   }
 
   private setMode(mode: Mode): void {
@@ -250,7 +332,7 @@ export class GameApp {
     if (!this.track || this.track.dateKey !== mode.date) {
       this.track = generateTrack(mode.date);
       scene.loadTrack(this.track);
-      this.hud?.setTrack(this.track, Date.now() + msUntilNextUtcDay(this.service.now()));
+      this.hud?.setTrack(this.track, this.nextDailyAt(mode.date));
     } else {
       scene.restart(true);
     }
@@ -285,6 +367,11 @@ export class GameApp {
   private bannerAction(): void {
     if (this.mode.kind === 'archive' && IS_DEVVIT && this.service.todayPostId) {
       openPost(this.service.todayPostId);
+      return;
+    }
+    // Leaving a challenge on an all-time circuit keeps you on that circuit.
+    if (this.mode.kind === 'challenge' && isPermanent(this.mode.date)) {
+      this.setMode({ kind: 'alltime', date: this.mode.date });
       return;
     }
     this.setMode({ kind: 'daily', date: this.service.today() });
@@ -421,6 +508,7 @@ export class GameApp {
   }
 
   private retry(): void {
+    if (this.menu?.isOpen) return;
     this.audio.unlock();
     this.closePanel();
     this.settingsModal?.hide();
@@ -438,7 +526,8 @@ export class GameApp {
     const date = track.dateKey;
     const ranked = this.ranked;
     const me = this.service.username;
-    const yesterdayAvailable = this.mode.kind !== 'champ';
+    const yesterdayAvailable = this.mode.kind !== 'champ' && !isPermanent(date);
+    const allTime = isPermanent(date);
 
     const prevPbMs = this.service.getPersonalBest(date)?.timeMs ?? this.leaderboard?.me?.timeMs ?? null;
     const finished = result.status === 'finished';
@@ -493,6 +582,8 @@ export class GameApp {
       canShare: ranked && finished && !loggedOut,
       champLabel: yesterdayAvailable ? "Challenge Yesterday's Champ" : null,
       ranked,
+      boardTitle: allTime ? `Top 10 all-time · ${permanentCircuit(date)?.name ?? ''}` : 'Top 10 today',
+      rankedText: allTime ? 'ranked on the all-time board' : 'ranked on today’s circuit',
     };
     this.postRun?.show(view);
     this.syncInputEnabled();
@@ -645,7 +736,13 @@ export class GameApp {
 
   private openPanel(): void {
     const today = this.service.today();
-    this.panel?.open(this.mode.kind === 'archive' ? this.mode.date : today, shiftDateKey(today, -1), this.service.username);
+    const tabs = [
+      { label: this.mode.kind === 'archive' ? formatDateLabel(this.mode.date) : 'Today', date: this.mode.kind === 'archive' ? this.mode.date : today },
+      { label: 'Yesterday', date: shiftDateKey(today, -1) },
+      ...PERMANENT_CIRCUITS.map((c) => ({ label: c.short, date: c.id })),
+    ];
+    const active = Math.max(0, tabs.findIndex((t) => t.date === this.mode.date));
+    this.panel?.open(tabs, active, this.service.username);
     this.syncInputEnabled();
   }
 
@@ -664,7 +761,9 @@ export class GameApp {
 
   /** Driving input is disabled while any overlay is open (R still restarts). */
   private syncInputEnabled(): void {
-    const blocked = !!(this.shareModal?.isOpen || this.settingsModal?.isOpen || this.panel?.isOpen || this.postRun?.isOpen);
+    const blocked = !!(
+      this.menu?.isOpen || this.shareModal?.isOpen || this.settingsModal?.isOpen || this.panel?.isOpen || this.postRun?.isOpen
+    );
     this.input.enabled = !blocked;
     this.root.classList.toggle('overlay-open', blocked);
   }
@@ -683,6 +782,7 @@ export class GameApp {
     this.panel?.dispose();
     this.shareModal?.dispose();
     this.settingsModal?.dispose();
+    this.menu?.dispose();
     this.toaster?.dispose();
     this.game?.destroy(true);
     this.game = null;
