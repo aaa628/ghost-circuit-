@@ -144,7 +144,7 @@ src/
   game/
     config.ts               Phaser config + all tuning constants (FIXED_DT, speeds, MAX_TIME_MS…)
     track/TrackGenerator.ts deterministic daily circuit + features + checkpoints
-    track/Circuits.ts       circuit registry: daily keys + the two all-time circuits
+    track/Circuits.ts       circuit registry: daily keys + the three all-time circuits
     track/Obstacles.ts      race-clock-synced hazard colliders (pure functions of elapsedMs)
     track/TrackQuery.ts     projections, gate crossings, progress
     physics/CarController.ts fixed-timestep arcade physics, drift, boost, wall sliding
