@@ -380,6 +380,7 @@ export class LeaderboardService {
       result = this.offline.submit(this.username ?? this.nickname, req);
     }
     if (result.accepted && result.isPersonalBest) {
+      // savePersonalBest itself refuses anything slower than the stored best.
       this.savePersonalBest(req.dateKey, { timeMs: req.timeMs, ghostData: req.ghostData, runId: result.run.id });
     }
     if (result.accepted) {
@@ -406,9 +407,12 @@ export class LeaderboardService {
     return readJson(this.pbKey(date), isCachedPb);
   }
 
+  /** Keep only the player's fastest lap (a same-time copy may add the server run id). */
   savePersonalBest(date: string, pb: CachedPb): void {
     const current = this.getPersonalBest(date);
-    if (!current || pb.timeMs < current.timeMs || current.runId === null) writeJson(this.pbKey(date), pb);
+    const faster = !current || pb.timeMs < current.timeMs;
+    const sameButLinked = !!current && pb.timeMs === current.timeMs && current.runId === null && pb.runId !== null;
+    if (faster || sameButLinked) writeJson(this.pbKey(date), pb);
   }
 
   /** Decode + validate a ghost against its circuit; null if it fails anti-cheat. */

@@ -39,6 +39,14 @@ export const PERMANENT_CIRCUITS: readonly PermanentCircuit[] = [
     archetype: 'speedway',
     seed: 'ghost-circuit:permanent:static-vault:v1',
   },
+  {
+    id: 'perm-drift',
+    name: 'SIDEWAYS',
+    short: 'DRIFT',
+    tagline: 'No hazards, no boosts. Just corners. Keep it sideways.',
+    archetype: 'drift',
+    seed: 'ghost-circuit:permanent:sideways:v1',
+  },
 ];
 
 export function permanentCircuit(id: string): PermanentCircuit | undefined {

@@ -1,6 +1,6 @@
 /** Data model for a generated daily circuit. Plain data — safe for server use. */
 
-export type ArchetypeId = 'grandprix' | 'hairpin' | 'technical' | 'speedway' | 'serpent';
+export type ArchetypeId = 'grandprix' | 'hairpin' | 'technical' | 'speedway' | 'serpent' | 'drift';
 
 /** A line across the track. Crossing it in the forward direction counts. */
 export type Gate = {

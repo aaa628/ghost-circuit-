@@ -112,6 +112,25 @@ const ARCHETYPES: readonly Archetype[] = [
   },
 ];
 
+/**
+ * Pure drift course (permanent circuit only — never in the daily rotation, so
+ * adding it doesn't change any daily track). Its shape comes from
+ * buildDriftLoop (a ribbon of S-bends); no hazards and no boost pads.
+ */
+const DRIFT_ARCHETYPE: Archetype = {
+  id: 'drift',
+  label: 'Drift',
+  nouns: ['SIDEWAYS'],
+  points: [13, 15],
+  radial: [0.8, 1.0],
+  hairpins: [0, 0],
+  rx: 2300,
+  ry: 1350,
+  wiggle: 0,
+  wiggleFreq: 0,
+  plan: { split: [0, 0], tunnel: [0, 0], sweeper: [0, 0], gate: [0, 0], chicane: [0, 0], pulsar: [0, 0], boost: [0, 0] },
+};
+
 const ADJECTIVES = [
   'IRON', 'CHROME', 'ULTRAVIOLET', 'COBALT', 'VOLTAGE', 'MIDNIGHT', 'PLASMA', 'STATIC',
   'LASER', 'PHANTOM', 'HYPER', 'QUANTUM', 'AFTERGLOW', 'CYBER', 'VELVET', 'SOLAR',
@@ -411,6 +430,37 @@ function buildFallbackLoop(rng: Rng): Loop {
   const loop = { xs, ys };
   smoothLoop(loop, 20, 0.5);
   return resampleClosed(loop, TRACK.STEP);
+}
+
+/**
+ * Drift ribbon: two long cosine-wave sides (a string of S-bends) joined by
+ * semicircles. Slopes match at every junction, so the loop is smooth, and the
+ * wave keeps every radius in a wide, drift-friendly range.
+ */
+function buildDriftLoop(rng: Rng): Loop | null {
+  const m = 3; // half-waves per side
+  const lambda = rng.range(950, 1100);
+  const W = (m * lambda) / 2;
+  const A = rng.range(120, 150);
+  const H = rng.range(430, 490);
+  const rEnd = H - A;
+  const pts: Array<[number, number]> = [];
+  const step = 6;
+  for (let x = -W; x < W; x += step) pts.push([x, H + A * Math.cos((2 * Math.PI * x) / lambda)]);
+  for (let a = Math.PI / 2; a > -Math.PI / 2; a -= step / rEnd) pts.push([W + rEnd * Math.cos(a), rEnd * Math.sin(a)]);
+  for (let x = W; x > -W; x -= step) pts.push([x, -(H + A * Math.cos((2 * Math.PI * x) / lambda))]);
+  for (let a = -Math.PI / 2; a > -1.5 * Math.PI; a -= step / rEnd) pts.push([-W + rEnd * Math.cos(a), rEnd * Math.sin(a)]);
+  const rot = rng.range(-0.35, 0.35);
+  const cr = Math.cos(rot);
+  const sr = Math.sin(rot);
+  const loop: Loop = {
+    xs: Float64Array.from(pts.map(([x, y]) => x * cr - y * sr)),
+    ys: Float64Array.from(pts.map(([x, y]) => x * sr + y * cr)),
+  };
+  const out = resampleClosed(loop, TRACK.STEP);
+  smoothLoop(out, 2, 0.5);
+  const fixed = resampleClosed(out, TRACK.STEP);
+  return finishBase(fixed, new Float64Array(fixed.xs.length).fill(TRACK.HALF_WIDTH));
 }
 
 /** Build and validate a base loop (constant width). Returns null on failure. */
@@ -875,9 +925,9 @@ function assemble(
   for (const [kind, wanted] of order) {
     for (let k = 0; k < wanted; k++) placers[kind](b, rng);
   }
-  // Every circuit gets at least one boost and one dynamic hazard.
-  if (b.boostPads.length === 0 && !placeBoost(b, rng, 1 / 500)) placeBoost(b, rng, 1 / 250);
-  if (!b.obstacles.some((o) => o.type === 'sweeper' || o.type === 'pulsar' || o.type === 'gate')) {
+  // Every circuit (except the pure drift course) gets at least one boost and one dynamic hazard.
+  if (arch.id !== 'drift' && b.boostPads.length === 0 && !placeBoost(b, rng, 1 / 500)) placeBoost(b, rng, 1 / 250);
+  if (arch.id !== 'drift' && !b.obstacles.some((o) => o.type === 'sweeper' || o.type === 'pulsar' || o.type === 'gate')) {
     if (!placePulsar(b, rng)) placeSweeper(b, rng);
   }
 
@@ -965,7 +1015,10 @@ export function archetypeFor(dateKey: string): ArchetypeId {
 
 function pickArchetype(dateKey: string): Archetype {
   const perm = permanentCircuit(dateKey);
-  if (perm) return ARCHETYPES.find((a) => a.id === perm.archetype) ?? (ARCHETYPES[0] as Archetype);
+  if (perm) {
+    if (perm.archetype === 'drift') return DRIFT_ARCHETYPE;
+    return ARCHETYPES.find((a) => a.id === perm.archetype) ?? (ARCHETYPES[0] as Archetype);
+  }
   const flip = hashString(`arch:${dateKey}`) & 1;
   const i = (2 * dayIndex(dateKey) + flip) % ARCHETYPES.length;
   return ARCHETYPES[(i + ARCHETYPES.length) % ARCHETYPES.length] as Archetype;
@@ -981,7 +1034,7 @@ export function generateTrack(dateKey: string): Track {
   const arch = pickArchetype(dateKey);
   let track: Track | null = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS && !track; attempt++) {
-    const loop = buildBaseLoop(arch, rng);
+    const loop = arch.id === 'drift' ? buildDriftLoop(rng) : buildBaseLoop(arch, rng);
     if (loop) track = assemble(dateKey, seed, arch, loop, rng, attempt);
   }
   if (!track) {

@@ -143,7 +143,7 @@ export class GameApp {
         onReady: (s) => this.onSceneReady(s),
         onFrame: (f) => this.onFrame(f),
         onStart: () => this.onRaceStart(),
-        onCheckpoint: (i, t, dPb, dT) => this.onCheckpoint(i, t, dPb, dT),
+        onCheckpoint: (i, t, dPb, dT, slot) => this.onCheckpoint(i, t, dPb, dT, slot),
         onFinish: (r) => void this.onFinish(r),
         onRestart: () => this.onRestarted(),
       },
@@ -407,7 +407,7 @@ export class GameApp {
     if (stale()) return;
     this.leaderboard = lb;
 
-    if (!pb && lb?.me?.runId) {
+    if (lb?.me?.runId && (!pb || lb.me.timeMs < pb.timeMs)) {
       const run = await this.service.getRun(lb.me.runId);
       if (stale()) return;
       if (run) {
@@ -481,17 +481,13 @@ export class GameApp {
     this.lastRunId = null;
   }
 
-  private onCheckpoint(index: number, _timeMs: number, dPb: number | null, dTarget: number | null): void {
+  private onCheckpoint(index: number, _timeMs: number, dPb: number | null, dTarget: number | null, slot: GhostSlot | null): void {
     const total = this.track?.checkpoints.length ?? 0;
-    const label = index + 1 >= total ? 'FINAL CP' : `CP ${index + 1}`;
-    const useTarget = dTarget !== null;
-    const slotCss = useTarget ? GHOST_STYLE[this.targetSlot() ?? 'record'].css : GHOST_STYLE.pb.css;
-    this.hud?.showSplit(label, useTarget ? dTarget : dPb, slotCss);
-  }
-
-  private targetSlot(): GhostSlot | null {
-    for (const s of ['challenger', 'champ', 'record'] as const) if (this.ghosts[s]) return s;
-    return null;
+    const cp = index + 1 >= total ? 'FINAL CP' : `CP ${index + 1}`;
+    // Name the ghost the split is measured against, so "+0.300" is never ambiguous.
+    if (dTarget !== null && slot) this.hud?.showSplit(`${cp} · ${GHOST_STYLE[slot].short}`, dTarget, GHOST_STYLE[slot].css);
+    else if (dPb !== null) this.hud?.showSplit(`${cp} · PB`, dPb, GHOST_STYLE.pb.css);
+    else this.hud?.showSplit(cp, null, GHOST_STYLE.pb.css);
   }
 
   private scheduleAutoStart(): void {
@@ -529,7 +525,9 @@ export class GameApp {
     const yesterdayAvailable = this.mode.kind !== 'champ' && !isPermanent(date);
     const allTime = isPermanent(date);
 
-    const prevPbMs = this.service.getPersonalBest(date)?.timeMs ?? this.leaderboard?.me?.timeMs ?? null;
+    const localPb = this.service.getPersonalBest(date)?.timeMs ?? null;
+    const serverPb = this.leaderboard?.me?.timeMs ?? null;
+    const prevPbMs = localPb === null ? serverPb : serverPb === null ? localPb : Math.min(localPb, serverPb);
     const finished = result.status === 'finished';
     const isPb = finished && (prevPbMs === null || result.timeMs < prevPbMs);
 
@@ -607,7 +605,7 @@ export class GameApp {
       leaderboardLoading: false,
       standing: meRow ? { rank: meRow.rank, total: res.leaderboard.total, gapToNextMs: meRow.gapToNextMs, nextUsername: meRow.nextUsername } : null,
     });
-    this.setGhostRun('pb', { ...res.run, ghostData: result.ghostData }, 'PB');
+    if (res.isPersonalBest) this.setGhostRun('pb', { ...res.run, ghostData: result.ghostData }, 'PB');
     if (record) {
       // You are the new #1: the gold ghost would just duplicate your PB.
       this.scene?.setGhost('record', null, '');

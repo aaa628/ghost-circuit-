@@ -73,7 +73,13 @@ export type SceneHooks = {
   onReady: (scene: RaceScene) => void;
   onFrame: (info: FrameInfo) => void;
   onStart: () => void;
-  onCheckpoint: (index: number, timeMs: number, deltaPb: number | null, deltaTarget: number | null) => void;
+  onCheckpoint: (
+    index: number,
+    timeMs: number,
+    deltaPb: number | null,
+    deltaTarget: number | null,
+    targetSlot: GhostSlot | null,
+  ) => void;
   onFinish: (result: RunResult) => void;
   onRestart: () => void;
 };
@@ -403,7 +409,7 @@ export class RaceScene extends Phaser.Scene {
       this.sfx.checkpoint();
       this.trackView?.setCheckpointState(this.sim.nextCheckpoint);
       this.updateDeltas(true);
-      this.hooks.onCheckpoint(ev.checkpoint, ev.checkpointTimeMs, this.cachedDeltaPb, this.cachedDeltaTarget);
+      this.hooks.onCheckpoint(ev.checkpoint, ev.checkpointTimeMs, this.cachedDeltaPb, this.cachedDeltaTarget, this.targetSlot());
     }
     if (ev.finished || ev.dnf) {
       this.sfx.engineStop();
@@ -424,7 +430,8 @@ export class RaceScene extends Phaser.Scene {
   private targetSlot(): GhostSlot | null {
     for (const slot of TARGET_PRIORITY) {
       const g = this.ghostPlayers.get(slot);
-      if (g?.active) return slot;
+      // Only ghosts you can see: a hidden ghost must never drive the delta.
+      if (g?.shown) return slot;
     }
     return null;
   }
@@ -441,7 +448,7 @@ export class RaceScene extends Phaser.Scene {
     const t = sim.elapsedMs;
     const p = Math.min(sim.progress, this.track.length);
     const pb = this.ghostPlayers.get('pb');
-    this.cachedDeltaPb = pb?.timeline ? t - pb.timeline.timeAtProgress(p) : null;
+    this.cachedDeltaPb = pb?.shown && pb.timeline ? t - pb.timeline.timeAtProgress(p) : null;
     const slot = this.targetSlot();
     const tg = slot ? this.ghostPlayers.get(slot) : undefined;
     this.cachedDeltaTarget = tg?.timeline ? t - tg.timeline.timeAtProgress(p) : null;

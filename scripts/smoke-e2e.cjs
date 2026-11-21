@@ -21,9 +21,9 @@ function watch(page, tag) {
   await page.waitForSelector('.loading.gone', { timeout: 20000 });
   await page.waitForSelector('.menu.in', { timeout: 5000 });
   await page.waitForTimeout(1200);
-  console.log('menu stats:', await page.$$eval('.circuit-row', (r) => r.map((x) => x.querySelector('.circuit-name')?.textContent + ' | ' + x.querySelector('.circuit-stats')?.textContent)));
+  console.log('menu stats:', await page.$$eval('.menu-row', (r) => r.map((x) => x.querySelector('.menu-name')?.textContent + ' | ' + x.querySelector('.menu-stats')?.textContent)));
   await page.screenshot({ path: `${OUT}/0-menu.png` });
-  await page.click('.circuit-row.kind-daily .pix-btn');
+  await page.click('.menu-row.kind-daily .menu-btn.primary');
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${OUT}/1-prestart.png` });
   await page.keyboard.down('ArrowUp');
@@ -39,7 +39,7 @@ function watch(page, tag) {
   console.log('manual timer after ~2.8s:', t1, '| reset to 00.000 in', Date.now() - tR0, 'ms (incl. roundtrip)');
   await page.click('button[aria-label="Main menu"]');
   await page.waitForSelector('.menu.in', { timeout: 5000 });
-  await page.click('.circuit-row[class*="kind-alltime"] .pix-btn');
+  await page.click('.menu-row.kind-alltime .menu-btn.primary');
   await page.waitForTimeout(900);
   console.log('all-time badge:', await page.textContent('.badge'), '| hint:', await page.textContent('.hint-next'));
   await page.screenshot({ path: `${OUT}/1b-alltime.png` });
@@ -90,7 +90,7 @@ function watch(page, tag) {
   await p4.waitForTimeout(800);
   await p4.screenshot({ path: `${OUT}/7a-mobile-menu.png` });
   await p4.screenshot({ path: `${OUT}/7a-mobile-menu-full.png`, fullPage: false });
-  await p4.tap('.circuit-row.kind-daily .pix-btn');
+  await p4.tap('.menu-row.kind-daily .menu-btn.primary');
   await p4.waitForTimeout(800);
   console.log('touch controls visible:', await p4.isVisible('.touch-controls.visible'));
   await p4.screenshot({ path: `${OUT}/7-mobile.png` });
@@ -115,7 +115,7 @@ function watch(page, tag) {
   await p6.waitForSelector('.loading.gone', { timeout: 20000 });
   await p6.waitForSelector('.menu.in', { timeout: 5000 });
   await p6.waitForTimeout(1500);
-  await p6.click('.circuit-row.kind-daily .pix-btn');
+  await p6.click('.menu-row.kind-daily .menu-btn.primary');
   await p6.waitForTimeout(500);
   console.log('offline badge visible:', await p6.isVisible('.offline-badge'));
   await p6.click('button[aria-label="Leaderboard"]');

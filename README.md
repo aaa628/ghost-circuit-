@@ -9,16 +9,16 @@ translucent **ghost** that everyone else races against — and you can challenge
 comments to beat yours, head-to-head.
 
 Visual identity: flat black, burgundy (#6D001A) and white, with racing curbs, pre-lit 3D cars and
-no glow. The main menu is a retro-desktop "takeover": stacked OS dialog windows over a dithered,
-halftone-printed backdrop torn by burgundy paper strips.
+no glow, and a minimal main menu.
 
-**Three circuits:**
+**Four circuits:**
 
 | Circuit | Board | Notes |
 |---|---|---|
 | **Daily** | today only | a brand-new generated circuit every day at 00:00 UTC |
 | **GLITCH RIDGE** | all-time | permanent hairpin course, never resets |
 | **STATIC VAULT** | all-time | permanent high-speed course, never resets |
+| **SIDEWAYS** | all-time | pure drift course: a ribbon of S-bends, no hazards, no boosts |
 
 Each circuit has its own leaderboard, ghosts (PB, #1, rivals) and challenge links.
 
@@ -164,7 +164,7 @@ src/
                             challenge links, Yesterday's Champion loader, PB cache
     platform.ts             Reddit (Devvit) vs browser bridge
   shared/                   wire types + anti-cheat validator
-  ui/MainMenu.ts            retro-desktop main menu (menuArt.ts: pixel type, dither, halftone)
+  ui/MainMenu.ts            minimal main menu (circuits, boards, help)
   ui/                       HUD, minimap, touch controls, post-run, leaderboard,
                             share, settings, toasts (DOM; user text via textContent only)
   splash/                   feed splash + canvas track preview
@@ -190,7 +190,7 @@ scripts/smoke-e2e.cjs       optional Playwright smoke test
 | POST | `/api/runs` | `{dateKey, timeMs, ghostData, share?}` → validated, ranked |
 
 `:circuit` / `dateKey` is a circuit key: a UTC date (`2026-11-21`) for the daily circuit, or a
-permanent id (`perm-ridge`, `perm-vault`) for the all-time boards (defined in
+permanent id (`perm-ridge`, `perm-vault`, `perm-drift`) for the all-time boards (defined in
 `src/game/track/Circuits.ts`). Daily boards accept runs only on their day; all-time boards always.
 | POST | `/api/comment` | Reddit only: post a challenge comment as the user |
 

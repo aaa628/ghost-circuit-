@@ -319,19 +319,3 @@ function drawShadow(shadowCtx: CanvasRenderingContext2D, parts: Part[], heading:
     }
   }
 }
-
-/**
- * Draw one car view into any canvas (used by the menu artwork).
- * Returns a canvas of FRAME_UNITS × scale pixels with the car centered.
- */
-export function renderCarCanvas(heading: number, palette: CarPalette, scale: number): HTMLCanvasElement {
-  const size = Math.round(FRAME_UNITS * scale);
-  const c = document.createElement('canvas');
-  c.width = size;
-  c.height = size;
-  const ctx = c.getContext('2d');
-  if (!ctx) return c;
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
-  drawFrame(ctx, buildCar(), heading, palette);
-  return c;
-}

@@ -1,16 +1,11 @@
 /**
- * Main menu — a retro desktop: two OS dialog windows over a dithered,
- * halftone-printed backdrop with a single torn burgundy paper strip.
- *
- *   GHOST_CIRCUIT.EXE   pick a circuit (today's daily + two all-time boards),
- *                       each with a preview, record, your best, RACE and BOARD
- *   GHOST CHECK         leaderboards, how to play, next daily, who you are
+ * Main menu — minimal: title, one list of circuits (preview, record, your
+ * best, RACE and BOARD), and a footer with leaderboards, help and status.
  */
 import { formatCountdown } from '../game/util/date';
 import type { Track } from '../game/track/TrackTypes';
 import { TrackPreview } from '../splash/TrackPreview';
 import { h, listen } from './dom';
-import { ditherTile, halftoneCar, pixelText, tornStrip } from './menuArt';
 
 export type MenuCircuit = {
   id: string;
@@ -33,16 +28,6 @@ export type MenuCallbacks = {
 
 type Row = { circuit: MenuCircuit; record: HTMLElement; mine: HTMLElement; racers: HTMLElement; preview: TrackPreview };
 
-function titleBar(title: string, active: boolean): HTMLElement {
-  return h(
-    'div',
-    { class: `win-title${active ? ' active' : ''}` },
-    h('span', { class: 'win-glyph', 'aria-hidden': 'true' }),
-    h('span', { class: 'win-name', text: title }),
-    h('span', { class: 'win-box', 'aria-hidden': 'true' }),
-  );
-}
-
 export class MainMenu {
   readonly root: HTMLElement;
   private readonly rows: Row[] = [];
@@ -52,102 +37,77 @@ export class MainMenu {
   private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(parent: HTMLElement, circuits: MenuCircuit[], private readonly cb: MenuCallbacks) {
-    // Backdrop: dither texture, giant pixel headline, torn strips, halftone car.
-    const backdrop = h('div', { class: 'menu-bg', 'aria-hidden': 'true' });
-    backdrop.style.backgroundImage = ditherTile('#151515', '#0f0f0f', 0.5, 2);
-    const headline = h('div', { class: 'menu-headline', 'aria-hidden': 'true' });
-    headline.append(pixelText('GHOST CIRCUIT', { px: 15, color: '#222222' }));
-    const strip = h('div', { class: 'menu-strip', 'aria-hidden': 'true' });
-    const edge = h('div', { class: 'strip-edge' });
-    const fill = h('div', { class: 'strip-fill' });
-    edge.style.clipPath = tornStrip(91, 9);
-    fill.style.clipPath = tornStrip(33, 7);
-    fill.style.backgroundImage = ditherTile('#5a0016', '#6d001a', 0.3, 3);
-    strip.append(edge, fill);
-    const car = halftoneCar(560, -0.62, 8);
-    car.classList.add('menu-car');
-    car.setAttribute('aria-hidden', 'true');
-
-    // Main window: circuit select.
-    const list = h('div', { class: 'circuit-list', role: 'list' });
+    const list = h('ol', { class: 'menu-list' });
     for (const c of circuits) {
-      const canvas = h('canvas', { class: 'circuit-preview', 'aria-hidden': 'true' });
-      const record = h('span', { class: 'stat-v', text: '—' });
-      const mine = h('span', { class: 'stat-v', text: '—' });
-      const racers = h('span', { class: 'stat-v', text: '0' });
-      const race = h('button', { class: 'pix-btn primary', type: 'button', 'data-circuit': c.id, 'aria-label': `Race ${c.name}` }, 'RACE ▶');
-      const board = h('button', { class: 'pix-btn', type: 'button', 'aria-label': `${c.name} leaderboard` }, 'BOARD');
+      const canvas = h('canvas', { class: 'menu-preview', 'aria-hidden': 'true' });
+      const record = h('span', { class: 'menu-stat-v', text: '—' });
+      const mine = h('span', { class: 'menu-stat-v', text: '—' });
+      const racers = h('span', { class: 'menu-stat-v', text: '0' });
+      const race = h('button', { class: 'menu-btn primary', type: 'button', 'data-circuit': c.id, 'aria-label': `Race ${c.name}` }, 'Race');
+      const board = h('button', { class: 'menu-btn', type: 'button', 'aria-label': `${c.name} leaderboard` }, 'Board');
       this.removers.push(
         listen(race, 'click', () => cb.onRace(c.id)),
         listen(board, 'click', () => cb.onBoards(c.id)),
       );
-      const row = h(
-        'div',
-        { class: `circuit-row kind-${c.kind}`, role: 'listitem' },
-        canvas,
+      list.append(
         h(
-          'div',
-          { class: 'circuit-info' },
-          h('span', { class: 'circuit-tag', text: c.tag }),
-          h('span', { class: 'circuit-name', text: c.name }),
-          h('span', { class: 'circuit-line', text: c.tagline }),
+          'li',
+          { class: `menu-row kind-${c.kind}` },
+          canvas,
           h(
-            'span',
-            { class: 'circuit-stats' },
-            h('span', { class: 'stat' }, h('b', { text: '#1 ' }), record),
-            h('span', { class: 'stat' }, h('b', { text: 'YOU ' }), mine),
-            h('span', { class: 'stat' }, h('b', { text: 'RACERS ' }), racers),
+            'div',
+            { class: 'menu-info' },
+            h('span', { class: 'menu-tag', text: c.tag }),
+            h('span', { class: 'menu-name', text: c.name }),
+            h('span', { class: 'menu-line', text: c.tagline }),
+            h(
+              'span',
+              { class: 'menu-stats' },
+              h('span', {}, h('b', { text: '#1 ' }), record),
+              h('span', {}, h('b', { text: 'You ' }), mine),
+              h('span', {}, h('b', { text: 'Racers ' }), racers),
+            ),
           ),
+          h('div', { class: 'menu-actions' }, race, board),
         ),
-        h('div', { class: 'circuit-actions' }, race, board),
       );
-      list.append(row);
-      const preview = new TrackPreview(canvas, { topPad: 4, pad: 4 });
-      this.rows.push({ circuit: c, record, mine, racers, preview });
+      this.rows.push({ circuit: c, record, mine, racers, preview: new TrackPreview(canvas, { topPad: 4, pad: 4 }) });
     }
-    const mainWin = h(
-      'section',
-      { class: 'win win-main', 'aria-label': 'Select a circuit' },
-      titleBar('GHOST_CIRCUIT.EXE', true),
-      h(
-        'div',
-        { class: 'win-body' },
-        h('div', { class: 'win-heading' }, pixelText('SELECT CIRCUIT', { px: 10, color: '#0a0a0a' })),
-        list,
-      ),
-    );
 
-    // Side window: ghost check + leaderboards, help and status.
-    const boards = h('button', { class: 'pix-btn primary wide', type: 'button', text: 'LEADERBOARDS' });
-    const help = h('button', { class: 'pix-btn wide', type: 'button', text: 'HOW TO PLAY' });
+    const boards = h('button', { class: 'menu-link', type: 'button', text: 'Leaderboards' });
+    const help = h('button', { class: 'menu-link', type: 'button', text: 'How to play' });
     this.removers.push(
       listen(boards, 'click', () => cb.onBoards()),
       listen(help, 'click', () => cb.onHelp()),
     );
-    this.countdown = h('span', { class: 'status-v', text: '--:--:--' });
-    this.player = h('span', { class: 'status-v', text: '—' });
-    const sideWin = h(
-      'section',
-      { class: 'win win-side', 'aria-label': 'Ghost check' },
-      titleBar('GHOST CHECK', false),
-      h(
-        'div',
-        { class: 'win-body' },
-        h('div', { class: 'alert-row' }, h('span', { class: 'alert-icon', 'aria-hidden': 'true', text: 'i' }), h('p', { class: 'alert-text', text: 'ARE YOU SURE YOU CAN BEAT YOUR OWN GHOST?' })),
-        h('div', { class: 'side-btns' }, boards, help),
-        h('div', { class: 'status-line' }, h('span', { text: 'NEW DAILY IN' }), this.countdown),
-        h('div', { class: 'status-line' }, h('span', { text: 'RACING AS' }), this.player),
-      ),
-    );
+    this.countdown = h('span', { class: 'menu-foot-v', text: '--:--:--' });
+    this.player = h('span', { class: 'menu-foot-v', text: '—' });
 
     this.root = h(
       'div',
       { class: 'menu hidden', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Ghost Circuit main menu' },
-      backdrop,
-      headline,
-      strip,
-      car,
-      h('div', { class: 'menu-windows' }, mainWin, sideWin),
+      h(
+        'div',
+        { class: 'menu-inner' },
+        h(
+          'header',
+          { class: 'menu-head' },
+          h('h1', { class: 'menu-title' }, h('span', { text: 'GHOST' }), h('span', { class: 'accent', text: 'CIRCUIT' })),
+          h('p', { class: 'menu-sub', text: 'Daily 60-second time trials against real players’ ghosts.' }),
+        ),
+        list,
+        h(
+          'footer',
+          { class: 'menu-foot' },
+          h('div', { class: 'menu-links' }, boards, help),
+          h(
+            'div',
+            { class: 'menu-status' },
+            h('span', {}, 'New daily in ', this.countdown),
+            h('span', {}, 'Racing as ', this.player),
+          ),
+        ),
+      ),
     );
     parent.append(this.root);
   }
@@ -179,7 +139,7 @@ export class MainMenu {
     this.timer = setInterval(tick, 1000);
     requestAnimationFrame(() => {
       this.root.classList.add('in');
-      this.root.querySelector<HTMLButtonElement>('.circuit-row .pix-btn')?.focus({ preventScroll: true });
+      this.root.querySelector<HTMLButtonElement>('.menu-btn.primary')?.focus({ preventScroll: true });
     });
   }
 
