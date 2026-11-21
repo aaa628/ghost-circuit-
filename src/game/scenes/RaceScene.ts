@@ -30,7 +30,11 @@ import type { InputController } from '../input/InputController';
 import type { CarInput } from '../physics/CarController';
 import { RaceSim, type RaceStatus, type TickEvents } from '../race/RaceSim';
 import { ObstacleRenderer } from '../render/ObstacleRenderer';
-import { CAR_TEX_SCALE, TEX, ensureTextures } from '../render/Textures';
+import { CAR_ORIGIN, CAR_DISPLAY_SCALE, GHOST_PALETTE, PLAYER_PALETTE, carFrameFor, ensureCarAtlas } from '../render/CarModel';
+import { TEX, ensureTextures } from '../render/Textures';
+
+export const CAR_ATLAS = 'gc-car-3d';
+export const GHOST_ATLAS = 'gc-ghost-3d';
 import { TrackRenderer } from '../render/TrackRenderer';
 import type { Track } from '../track/TrackTypes';
 import { clamp, lerp, lerpAngle } from '../util/math';
@@ -132,14 +136,16 @@ export class RaceScene extends Phaser.Scene {
 
   create(): void {
     ensureTextures(this);
+    ensureCarAtlas(this, CAR_ATLAS, PLAYER_PALETTE, true);
+    ensureCarAtlas(this, GHOST_ATLAS, GHOST_PALETTE, false);
     this.cameras.main.setBackgroundColor(COLORS.background);
 
     for (const slot of GHOST_SLOTS) this.ghostPlayers.set(slot, new GhostPlayer(this, slot));
 
     this.car = this.add
-      .image(0, 0, TEX.car)
-      .setOrigin(26 / 46, 0.5)
-      .setScale(1 / CAR_TEX_SCALE)
+      .image(0, 0, CAR_ATLAS, 0)
+      .setOrigin(CAR_ORIGIN.x, CAR_ORIGIN.y)
+      .setScale(CAR_DISPLAY_SCALE)
       .setDepth(11);
 
     // Flat particles, normal blending: white boost puffs, grey tyre smoke, debris.
@@ -436,7 +442,7 @@ export class RaceScene extends Phaser.Scene {
     const visualMs = this.visualTimeMs(alpha);
     const boosting = s.boostMs > 0;
 
-    this.car?.setPosition(x, y).setRotation(a);
+    this.car?.setPosition(x, y).setFrame(carFrameFor(a));
 
     // Effects.
     const fx = Math.cos(a);

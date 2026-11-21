@@ -158,7 +158,7 @@ export const COLORS = {
 // ─── Camera ─────────────────────────────────────────────────────────────────
 export const CAMERA = {
   /** World units that should fit across the shorter screen dimension. */
-  VIEW_SPAN: 760,
+  VIEW_SPAN: 660,
   MIN_ZOOM: 0.45,
   MAX_ZOOM: 1.6,
   LOOK_AHEAD_S: 0.32,

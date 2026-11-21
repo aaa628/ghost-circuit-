@@ -4,7 +4,7 @@
  */
 import Phaser from 'phaser';
 import { GHOST, GHOST_STYLE, type GhostSlot } from '../config';
-import { CAR_TEX_SCALE, TEX } from '../render/Textures';
+import { CAR_ORIGIN, CAR_DISPLAY_SCALE, carFrameFor } from '../render/CarModel';
 import type { GhostPose, GhostTimeline } from './GhostTimeline';
 
 export class GhostPlayer {
@@ -22,9 +22,9 @@ export class GhostPlayer {
     this.color = style.color;
     this.trail = scene.add.graphics().setDepth(8);
     this.sprite = scene.add
-      .image(0, 0, TEX.ghost)
-      .setOrigin(26 / 46, 0.5)
-      .setScale(1 / CAR_TEX_SCALE)
+      .image(0, 0, 'gc-ghost-3d', 0)
+      .setOrigin(CAR_ORIGIN.x, CAR_ORIGIN.y)
+      .setScale(CAR_DISPLAY_SCALE)
       .setTint(style.color)
       .setAlpha(GHOST.ALPHA)
       .setDepth(9);
@@ -83,7 +83,7 @@ export class GhostPlayer {
     const tl = this.timeline;
     if (!tl || !this.visible) return;
     const p = tl.sample(tMs, this.pose);
-    this.sprite.setPosition(p.x, p.y).setRotation(p.r);
+    this.sprite.setPosition(p.x, p.y).setFrame(carFrameFor(p.r));
     this.sprite.setAlpha(p.finished ? GHOST.ALPHA * 0.55 : GHOST.ALPHA);
     const inv = 1 / Math.max(0.3, zoom);
     this.tag.setPosition(p.x, p.y - 22 * Math.min(1.6, inv)).setScale(inv);

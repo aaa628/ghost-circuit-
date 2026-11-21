@@ -125,7 +125,8 @@ export function formatGap(ms: number): string {
 
 /** "-0.312" / "+0.145" */
 export function formatDelta(ms: number): string {
-  const sign = ms < 0 ? '-' : '+';
-  const abs = Math.abs(Math.round(ms));
+  const rounded = Math.round(ms);
+  const sign = rounded < 0 ? '-' : '+';
+  const abs = Math.abs(rounded);
   return `${sign}${Math.floor(abs / 1000)}.${(abs % 1000).toString().padStart(3, '0')}`;
 }
