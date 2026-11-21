@@ -112,6 +112,7 @@ export class CarController {
     const s = this.state;
     const dt = FIXED_DT_S;
     this.clearReport();
+    const speedIn = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
 
     // ── Steering ──
     const target = clamp(input.steer, -1, 1);
@@ -146,7 +147,12 @@ export class CarController {
 
     if (throttle > 0) {
       if (vf < 0) vf = Math.min(0, vf + CAR.BRAKE * throttle * dt);
-      else if (vf < vmax) vf = Math.min(vmax, vf + accel * throttle * dt);
+      else {
+        // The engine limits TOTAL speed: while the car is sliding sideways the
+        // forward part may only grow until |v| reaches vmax.
+        const room = Math.sqrt(Math.max(0, vmax * vmax - vr * vr));
+        if (vf < room) vf = Math.min(room, vf + accel * throttle * dt);
+      }
     }
     if (brake > 0) {
       if (vf > 0) vf = Math.max(0, vf - CAR.BRAKE * brake * dt);
@@ -163,6 +169,16 @@ export class CarController {
     else if (vf < 0) vf -= bled * CAR.SLIP_REDIRECT * 0.5;
     if (s.drifting) vf -= vf * CAR.DRIFT_DRAG * dt;
     vr = newVr;
+
+    // Energy guard: grip redirection may give back speed that sliding cost,
+    // but never create it. Total speed may not exceed vmax, or — above vmax
+    // (after a boost) — what the car had this tick minus the over-speed decay.
+    // Without this, weaving converts lateral slip into forward speed every
+    // swerve and the car sustains ~1.4× MAX_SPEED with no boost.
+    const allowed = speedIn > vmax ? vmax + (speedIn - vmax) * (1 - CAR.OVERSPEED_DECAY * dt) : vmax;
+    if (vf > 0 && vf * vf + vr * vr > allowed * allowed) {
+      vf = Math.sqrt(Math.max(0, allowed * allowed - vr * vr));
+    }
 
     s.vx = fx * vf + rx * vr;
     s.vy = fy * vf + ry * vr;

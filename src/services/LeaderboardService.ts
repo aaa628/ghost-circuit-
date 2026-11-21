@@ -40,7 +40,7 @@ import {
   takePendingChallenge,
   type ChallengeRef,
 } from './platform';
-import { pruneByDate, readJson, readString, writeJson, writeString } from './storage';
+import { pruneByDate, readJson, readString, removeKey, writeJson, writeString } from './storage';
 
 const API_TIMEOUT_MS = 6000;
 const NICK_KEY = 'gc:v1:nickname';
@@ -403,12 +403,24 @@ export class LeaderboardService {
     return `${PB_PREFIX}${this.username ?? 'anon'}:${date}`;
   }
 
+  /**
+   * The device's PB for a circuit. A stored lap that fails today's anti-cheat
+   * (e.g. one recorded before a physics fix) is deleted rather than raced.
+   */
   getPersonalBest(date: string): CachedPb | null {
-    return readJson(this.pbKey(date), isCachedPb);
+    const key = this.pbKey(date);
+    const pb = readJson(key, isCachedPb);
+    if (!pb) return null;
+    if (this.preflight(generateTrack(date), pb.timeMs, pb.ghostData)) {
+      removeKey(key);
+      return null;
+    }
+    return pb;
   }
 
-  /** Keep only the player's fastest lap (a same-time copy may add the server run id). */
+  /** Keep only the player's fastest valid lap (a same-time copy may add the server run id). */
   savePersonalBest(date: string, pb: CachedPb): void {
+    if (this.preflight(generateTrack(date), pb.timeMs, pb.ghostData)) return;
     const current = this.getPersonalBest(date);
     const faster = !current || pb.timeMs < current.timeMs;
     const sameButLinked = !!current && pb.timeMs === current.timeMs && current.runId === null && pb.runId !== null;

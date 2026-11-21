@@ -529,7 +529,9 @@ export class GameApp {
     const serverPb = this.leaderboard?.me?.timeMs ?? null;
     const prevPbMs = localPb === null ? serverPb : serverPb === null ? localPb : Math.min(localPb, serverPb);
     const finished = result.status === 'finished';
-    const isPb = finished && (prevPbMs === null || result.timeMs < prevPbMs);
+    // A lap that fails the anti-cheat never counts as a PB (the server would refuse it too).
+    const lapValid = finished && !!result.ghostData && this.service.preflight(track, result.timeMs, result.ghostData) === null;
+    const isPb = lapValid && (prevPbMs === null || result.timeMs < prevPbMs);
 
     const versusGhost = this.mode.kind === 'challenge' ? this.ghosts.challenger : this.mode.kind === 'champ' ? this.ghosts.champ : undefined;
     const versus = versusGhost

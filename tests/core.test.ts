@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { SKILLS, runAutopilot } from '../src/game/ai/Autopilot';
-import { CAR, MAX_TIME_MS, TRACK } from '../src/game/config';
+import { Autopilot, SKILLS, runAutopilot } from '../src/game/ai/Autopilot';
+import { RaceSim } from '../src/game/race/RaceSim';
+import { CAR, MAX_TICKS, MAX_TIME_MS, TRACK } from '../src/game/config';
 import { decodeGhost, encodeGhost } from '../src/game/ghost/GhostCodec';
 import { ColliderPool, collectColliders } from '../src/game/track/Obstacles';
 import { generateTrack, archetypeFor } from '../src/game/track/TrackGenerator';
@@ -206,5 +207,37 @@ describe('shared helpers', () => {
     assert.equal(formatTime(5007), '05.007');
     assert.equal(formatDelta(-312), '-0.312');
     assert.equal(formatDelta(1145), '+1.145');
+  });
+});
+
+describe('car physics energy', () => {
+  // Regression: weaving used to turn grip "slip redirect" into free speed
+  // (~1.4× MAX_SPEED with no boost), and honest laps were then rejected.
+  it('swerving and drift-spamming never beats top speed, and the lap stays valid', () => {
+    for (const key of ['perm-drift', '2026-11-21', '2026-11-22']) {
+      const track = generateTrack(key);
+      for (const period of [8, 18, 40]) {
+        const sim = new RaceSim(track);
+        const pilot = new Autopilot(track, SKILLS.pace);
+        sim.start();
+        let peakNoBoost = 0;
+        let sinceBoost = Infinity;
+        for (let i = 0; i < MAX_TICKS + 2 && sim.status === 'racing'; i++) {
+          const inp = { ...pilot.drive(sim) };
+          inp.steer = Math.max(-1, Math.min(1, inp.steer + 0.8 * Math.sign(Math.sin((i / period) * Math.PI * 2))));
+          inp.drift = i % 3 !== 0;
+          inp.brake = 0;
+          inp.throttle = 1;
+          sim.step(inp);
+          sinceBoost = sim.car.state.boostMs > 0 ? 0 : sinceBoost + 1;
+          if (sinceBoost > 240) peakNoBoost = Math.max(peakNoBoost, sim.car.state.speed);
+        }
+        assert.ok(peakNoBoost <= CAR.MAX_SPEED + 0.5, `${key}/${period}: ${peakNoBoost.toFixed(1)} > ${CAR.MAX_SPEED}`);
+        if (sim.status === 'finished') {
+          const v = validateRun(track, sim.finishTimeMs, sim.recorder.encode());
+          assert.ok(v.ok, `${key}/${period}: ${v.ok ? '' : v.reason}`);
+        }
+      }
+    }
   });
 });
