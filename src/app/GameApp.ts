@@ -282,7 +282,7 @@ export class GameApp {
           this.menu?.hide();
           this.setMode(isPermanent(id) ? { kind: 'alltime', date: id } : { kind: 'daily', date: id });
         },
-        onBoards: () => this.openPanel(),
+        onBoards: (id) => this.openPanel(id),
         onHelp: () => {
           this.settingsModal?.show(this.settings);
           this.syncInputEnabled();
@@ -734,14 +734,15 @@ export class GameApp {
 
   // ── Panels ────────────────────────────────────────────────────────────────
 
-  private openPanel(): void {
+  /** Open the leaderboards on a given circuit's tab (default: the one being raced). */
+  private openPanel(focus?: string): void {
     const today = this.service.today();
     const tabs = [
       { label: this.mode.kind === 'archive' ? formatDateLabel(this.mode.date) : 'Today', date: this.mode.kind === 'archive' ? this.mode.date : today },
       { label: 'Yesterday', date: shiftDateKey(today, -1) },
       ...PERMANENT_CIRCUITS.map((c) => ({ label: c.short, date: c.id })),
     ];
-    const active = Math.max(0, tabs.findIndex((t) => t.date === this.mode.date));
+    const active = Math.max(0, tabs.findIndex((t) => t.date === (focus ?? this.mode.date)));
     this.panel?.open(tabs, active, this.service.username);
     this.syncInputEnabled();
   }

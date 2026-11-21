@@ -35,6 +35,7 @@ import { TEX, ensureTextures } from '../render/Textures';
 
 export const CAR_ATLAS = 'gc-car-3d';
 export const GHOST_ATLAS = 'gc-ghost-3d';
+import { TireEffects } from '../render/TireEffects';
 import { TrackRenderer } from '../render/TrackRenderer';
 import type { Track } from '../track/TrackTypes';
 import { clamp, lerp, lerpAngle } from '../util/math';
@@ -88,8 +89,9 @@ export class RaceScene extends Phaser.Scene {
   private readonly ghostPlayers = new Map<GhostSlot, GhostPlayer>();
   private car: Phaser.GameObjects.Image | null = null;
   private boostFx: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-  private sparks: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-  private driftFx: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  private effects: TireEffects | null = null;
+  /** Rear-wheel positions last tick (for skid strips) and whether they were sliding. */
+  private readonly wheelPrev = { lx: 0, ly: 0, rx: 0, ry: 0, sliding: false };
 
   private acc = 0;
   private prevX = 0;
@@ -159,26 +161,7 @@ export class RaceScene extends Phaser.Scene {
         emitting: false,
       })
       .setDepth(10);
-    this.driftFx = this.add
-      .particles(0, 0, TEX.dot, {
-        lifespan: { min: 300, max: 600 },
-        speed: { min: 10, max: 40 },
-        scale: { start: 0.3, end: 0.7 },
-        alpha: { start: 0.35, end: 0 },
-        tint: [COLORS.smoke],
-        emitting: false,
-      })
-      .setDepth(9.5);
-    this.sparks = this.add
-      .particles(0, 0, TEX.dot, {
-        lifespan: { min: 200, max: 450 },
-        speed: { min: 80, max: 260 },
-        scale: { start: 0.2, end: 0 },
-        alpha: { start: 1, end: 0 },
-        tint: [COLORS.white, COLORS.burgundyHi],
-        emitting: false,
-      })
-      .setDepth(10);
+    this.effects = new TireEffects(this);
 
     this.buildTrackViews();
 
@@ -204,8 +187,10 @@ export class RaceScene extends Phaser.Scene {
     for (const d of this.disposers.splice(0)) d();
     this.trackView?.destroy();
     this.obstacleView?.destroy();
+    this.effects?.destroy();
     this.trackView = null;
     this.obstacleView = null;
+    this.effects = null;
     for (const g of this.ghostPlayers.values()) g.destroy();
     this.ghostPlayers.clear();
     this.sfx.engineStop();
@@ -290,8 +275,8 @@ export class RaceScene extends Phaser.Scene {
     this.prevA = s.angle;
     this.trackView?.setCheckpointState(0);
     this.boostFx?.killAll();
-    this.driftFx?.killAll();
-    this.sparks?.killAll();
+    this.effects?.clear();
+    this.wheelPrev.sliding = false;
     this.cameras.main?.resetFX();
     this.sfx.engineStop();
     this.snapCamera();
@@ -349,20 +334,65 @@ export class RaceScene extends Phaser.Scene {
     this.hooks.onStart();
   }
 
+  /** Sparks fly on along the car's (post-impact) direction of travel. */
+  private throwSparks(x: number, y: number, intensity: number): void {
+    const s = this.sim.car.state;
+    const sp = Math.hypot(s.vx, s.vy);
+    const dx = sp > 1 ? s.vx / sp : Math.cos(s.angle);
+    const dy = sp > 1 ? s.vy / sp : Math.sin(s.angle);
+    this.effects?.sparkBurst(x, y, dx, dy, intensity);
+  }
+
+  /** Skid marks + tyre smoke from the rear wheels while sliding, braking hard or spinning up. */
+  private tyreEffects(input: CarInput): void {
+    const fx = this.effects;
+    if (!fx) return;
+    const s = this.sim.car.state;
+    const ca = Math.cos(s.angle);
+    const sa = Math.sin(s.angle);
+    const bx = s.x - ca * 11;
+    const by = s.y - sa * 11;
+    const lx = bx + sa * 7.5;
+    const ly = by - ca * 7.5;
+    const rx = bx - sa * 7.5;
+    const ry = by + ca * 7.5;
+    const lat = Math.abs(s.lateralSpeed);
+    const braking = input.brake > 0 && s.forwardSpeed > 200;
+    const launch = input.throttle > 0 && s.speed < 110 && this.sim.tick < 45;
+    const sliding = (lat > 75 && s.speed > 120) || (s.drifting && s.speed > 150) || braking || launch;
+    const prev = this.wheelPrev;
+    if (sliding && prev.sliding) {
+      const strength = Math.min(1, lat / 260 + (braking ? 0.45 : 0) + (launch ? 0.6 : 0));
+      fx.skid(prev.lx, prev.ly, lx, ly, strength);
+      fx.skid(prev.rx, prev.ry, rx, ry, strength);
+      if (this.sim.tick % 2 === 0) {
+        const amount = Math.min(1, strength + 0.2);
+        fx.smoke(lx, ly, -s.vx * 0.12, -s.vy * 0.12, amount);
+        fx.smoke(rx, ry, -s.vx * 0.12, -s.vy * 0.12, amount);
+      }
+    }
+    prev.lx = lx;
+    prev.ly = ly;
+    prev.rx = rx;
+    prev.ry = ry;
+    prev.sliding = sliding;
+  }
+
   private handleTick(ev: TickEvents): void {
     const r = ev.report;
     const s = this.sim.car.state;
+    this.tyreEffects(this.lastInput);
     if (r.wallImpact > COLLISION.IMPACT_FX_THRESHOLD) {
       const k = clamp(r.wallImpact / CAR.MAX_SPEED, 0, 1);
       this.sfx.thud(k);
-      this.sparks?.explode(Math.round(6 + 14 * k), r.impactX, r.impactY);
+      this.throwSparks(r.impactX, r.impactY, k);
       this.cameras.main.shake(120 + 120 * k, 0.003 + 0.007 * k);
     }
     if (r.obstacleImpact > COLLISION.IMPACT_FX_THRESHOLD * 0.6) {
       const k = clamp(r.obstacleImpact / CAR.MAX_SPEED, 0, 1);
       this.sfx.thud(k);
       if (r.hazardHit) this.sfx.zap();
-      this.sparks?.explode(Math.round(8 + 16 * k), r.impactX, r.impactY);
+      this.throwSparks(r.impactX, r.impactY, Math.min(1, k * 1.3));
       this.cameras.main.shake(140, 0.004 + 0.008 * k);
     }
     if (r.boostTriggered) {
@@ -451,10 +481,6 @@ export class RaceScene extends Phaser.Scene {
     const rearY = y - fy * 18;
     if (racing) {
       if (boosting) this.boostFx?.emitParticleAt(rearX, rearY, 1);
-      if (s.drifting && Math.abs(s.lateralSpeed) > 70 && s.speed > 180) {
-        this.driftFx?.emitParticleAt(rearX - fy * 8, rearY + fx * 8, 1);
-        this.driftFx?.emitParticleAt(rearX + fy * 8, rearY - fx * 8, 1);
-      }
       this.sfx.engineUpdate(s.speed / CAR.MAX_SPEED, this.lastInput.throttle, boosting);
     }
 
@@ -462,6 +488,8 @@ export class RaceScene extends Phaser.Scene {
     this.updateCamera(delta, x, y, s.vx, s.vy, s.speed);
     const cam = this.cameras.main;
     this.viewRect.setTo(cam.worldView.x, cam.worldView.y, cam.worldView.width, cam.worldView.height);
+
+    this.effects?.update(delta);
 
     // Hazards, track animation, ghosts.
     this.obstacleView?.draw(visualMs, this.wallMs, this.viewRect);
