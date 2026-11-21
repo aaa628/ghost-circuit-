@@ -1,0 +1,93 @@
+/* Ghost Circuit — inline feed splash. Must look great from 320px to ~700px wide. */
+:root {
+  --bg: #05060f;
+  --text: #eef1ff;
+  --muted: #9aa4d6;
+  --cyan: #22e6ff;
+  --gold: #ffc531;
+  --green: #3dff8a;
+  --magenta: #ff4fd8;
+  --line: rgba(124, 249, 255, 0.18);
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow: hidden; }
+body {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(34, 230, 255, 0.12), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(255, 79, 216, 0.1), transparent 70%),
+    linear-gradient(rgba(38, 45, 102, 0.25) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, rgba(38, 45, 102, 0.25) 1px, transparent 1px) 0 0 / 28px 28px,
+    var(--bg);
+}
+.splash {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.sp-head { text-align: center; }
+.logo { font-family: var(--mono); font-weight: 900; font-size: clamp(24px, 7.5vw, 38px); letter-spacing: 0.12em; line-height: 1; }
+.logo-a { color: #fff; text-shadow: 0 0 10px var(--cyan), 0 0 26px rgba(34, 230, 255, 0.55); }
+.logo-b { margin-left: 0.3em; color: var(--magenta); text-shadow: 0 0 10px var(--magenta), 0 0 26px rgba(255, 79, 216, 0.5); }
+.tagline { margin-top: 6px; font-size: 12px; color: var(--muted); letter-spacing: 0.04em; }
+
+.sp-circuit {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 120px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(5, 6, 15, 0.6);
+  overflow: hidden;
+}
+.preview { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sp-meta { position: absolute; left: 10px; top: 10px; right: 10px; pointer-events: none; }
+.pill { display: inline-block; padding: 3px 8px; border-radius: 999px; font-family: var(--mono); font-size: 10px; font-weight: 800; letter-spacing: 0.12em; color: #031018; background: var(--cyan); }
+.track-name { margin: 6px 0 2px; font-family: var(--mono); font-size: clamp(16px, 4.6vw, 22px); font-weight: 900; letter-spacing: 0.08em; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9); }
+.track-facts { font-size: 11px; color: var(--muted); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9); }
+
+.sp-stats { display: grid; grid-template-columns: 1.4fr 0.8fr 1fr; gap: 8px; }
+.stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--line); background: rgba(10, 12, 30, 0.75); min-width: 0; }
+.stat-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); }
+.stat-value { font-family: var(--mono); font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.stat-record .stat-value { color: var(--gold); }
+.stat-pb .stat-value { color: var(--cyan); }
+
+.challenge-card { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 12px; border: 1px solid rgba(61, 255, 138, 0.6); background: rgba(10, 40, 24, 0.55); font-size: 13px; font-weight: 700; }
+.challenge-card[hidden] { display: none; }
+.ch-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn-accept { flex: none; border: 0; border-radius: 10px; padding: 8px 12px; font: inherit; font-family: var(--mono); font-weight: 900; letter-spacing: 0.08em; color: #021208; background: var(--green); cursor: pointer; }
+
+.sp-actions { display: flex; flex-direction: column; gap: 6px; }
+.race-btn {
+  border: 0;
+  border-radius: 14px;
+  padding: 14px;
+  font-family: var(--mono);
+  font-size: clamp(15px, 4.4vw, 18px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #031018;
+  background: linear-gradient(180deg, #2af0ff, #10a8c9);
+  box-shadow: 0 0 22px rgba(34, 230, 255, 0.45);
+  cursor: pointer;
+  animation: glow 1.8s ease-in-out infinite;
+}
+.race-btn:active { transform: scale(0.98); }
+.ghost-btn { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: transparent; color: var(--text); font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
+.ghost-btn[hidden] { display: none; }
+@keyframes glow { 50% { box-shadow: 0 0 34px rgba(34, 230, 255, 0.7); } }
+.sp-foot { text-align: center; font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.06em; }
+#countdown { color: #ffb547; font-weight: 800; }
+@media (max-width: 360px) {
+  .sp-stats { grid-template-columns: 1fr 1fr; }
+  .stat-pb { grid-column: span 2; }
+}
+@media (prefers-reduced-motion: reduce) { .race-btn { animation: none; } }

@@ -1,0 +1,40 @@
+{
+  "private": true,
+  "name": "ghost-circuit",
+  "version": "1.0.0",
+  "description": "Ghost Circuit \u2014 a daily 60-second neon micro-racing time trial for Reddit, raced against the ghosts of real players.",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:client": "vite --config vite.local.config.ts",
+    "dev:server": "tsx watch server/local.ts",
+    "server": "tsx server/local.ts",
+    "build": "vite build",
+    "build:local": "vite build --config vite.local.config.ts",
+    "start": "npm run build:local && tsx server/local.ts --serve",
+    "type-check": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "login": "devvit login",
+    "playtest": "devvit playtest",
+    "deploy": "npm run type-check && npm run test && devvit upload",
+    "launch": "npm run deploy && devvit publish",
+    "smoke": "node scripts/smoke-e2e.cjs"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@devvit/start": "0.15.4",
+    "@devvit/web": "0.15.4",
+    "devvit": "0.15.4",
+    "express": "5.1.0",
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6",
+    "@types/node": "24.19.2",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vite": "8.3.5"
+  }
+}

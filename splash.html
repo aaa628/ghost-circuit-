@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#05060f" />
+    <title>Ghost Circuit</title>
+  </head>
+  <body>
+    <main class="splash" id="splash">
+      <header class="sp-head">
+        <div class="logo" aria-label="Ghost Circuit"><span class="logo-a">GHOST</span><span class="logo-b">CIRCUIT</span></div>
+        <div class="tagline">Daily 60-second time trial · race real players’ ghosts</div>
+      </header>
+      <section class="sp-circuit">
+        <canvas id="preview" class="preview" aria-hidden="true"></canvas>
+        <div class="sp-meta">
+          <span class="pill" id="pill">TODAY</span>
+          <h1 class="track-name" id="track-name">Loading circuit…</h1>
+          <div class="track-facts" id="track-facts"></div>
+        </div>
+      </section>
+      <section class="sp-stats" aria-label="Today’s standings">
+        <div class="stat stat-record"><span class="stat-label">#1 today</span><span class="stat-value" id="rec">—</span></div>
+        <div class="stat"><span class="stat-label">Racers</span><span class="stat-value" id="racers">0</span></div>
+        <div class="stat stat-pb"><span class="stat-label">Your PB</span><span class="stat-value" id="pb">—</span></div>
+      </section>
+      <div class="challenge-card" id="challenge" hidden>
+        <span class="ch-text" id="challenge-text"></span>
+        <button class="btn-accept" id="accept" type="button">ACCEPT</button>
+      </div>
+      <div class="sp-actions">
+        <button class="race-btn" id="race" type="button">RACE TODAY’S CIRCUIT</button>
+        <button class="ghost-btn" id="secondary" type="button" hidden></button>
+      </div>
+      <footer class="sp-foot">New circuit in <span id="countdown">--:--:--</span></footer>
+    </main>
+    <script type="module" src="./src/splash/splash.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": [],
+    "customConditions": ["browser"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/server/**"]
+}
