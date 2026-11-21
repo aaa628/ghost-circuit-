@@ -1,12 +1,14 @@
 # 🏁 Ghost Circuit
 
-**A daily 60-second neon micro-racing time trial for Reddit — race the ghosts of real players.**
+**A daily 60-second micro-racing time trial for Reddit — race the ghosts of real players.**
 
 Every day at 00:00 UTC a brand-new miniature circuit unlocks. Every Redditor on Earth gets the
-*exact same* track: same hairpins, same boost pads, same sweeping neon hazards. You have
+*exact same* track: same hairpins, same boost pads, same sweeping hazards. You have
 60.000 seconds to clear every checkpoint and cross the line. Your fastest lap becomes a
 translucent **ghost** that everyone else races against — and you can challenge anyone in the
 comments to beat yours, head-to-head.
+
+Visual identity: flat black, burgundy (#6D001A) and white, with racing curbs and no glow.
 
 Built for **Reddit's Game of the Day Hackathon 2026** on **Devvit Web** (Phaser 3 + TypeScript + Vite,
 Express server on Devvit Redis).
@@ -28,15 +30,15 @@ Express server on Devvit Redis).
    Run out of time and it's a **DNF**; press **R** and you're back on the grid in a blink.
 3. **Read the hazards.** Red obstacles move to the *race clock*, not the wall clock — the same
    sweeper is in the same place at 7.250s for every player and every ghost. Learn their rhythm.
-4. **Pick your line.** Lime **boost pads** launch you. **Split lanes**: the inner lane is shorter
-   but squeezed by a pulsing dome; the outer lane is longer but has a boost. **Neon tunnels** are
+4. **Pick your line.** Burgundy **boost pads** with white chevrons launch you. **Split lanes**: the inner lane is shorter
+   but squeezed by a pulsing dome; the outer lane is longer but has a boost. **Tunnels** are
    narrow. **Chicane fins** force a weave. Drift through hairpins.
 5. **Race the ghosts** (toggle each in the top-right):
-   - **PB** (cyan) — your personal best
-   - **#1** (gold) — today's record holder (a *PACE BOT* until someone sets a time)
-   - **CHAMP** (magenta) — yesterday's #1, via **Challenge Yesterday's Champ**
-   - **RIVAL** (green) — any player you challenge from the leaderboard or a shared link
-   The live split under the clock shows `-0.312` (ahead, green) / `+0.145` (behind, red).
+   - **PB** (white) — your personal best
+   - **#1** (burgundy) — today's record holder (a *PACE BOT* until someone sets a time)
+   - **CHAMP** (grey) — yesterday's #1, via **Challenge Yesterday's Champ**
+   - **RIVAL** (pink) — any player you challenge from the leaderboard or a shared link
+   The live split under the clock shows `-0.312` (ahead, white) / `+0.145` (behind, pink).
 6. **Share & Challenge.** After a run, share it: on Reddit the share link opens the game with
    your ghost locked on the grid; you can also post it as a comment with a challenge code
    (`GC-XXXXXXXX`) anyone can type into the leaderboard panel.
@@ -97,7 +99,7 @@ Express server on Devvit Redis).
 - **Autopilot = free content.** The same bot that proves tracks are drivable generates the
   *PACE BOT* ghost for empty boards and the offline-mode seeded rivals — genuine physics laps
   that pass validation. `?autopilot=1` lets it drive your car (great for demo footage).
-- **Zero assets.** Car sprites, glow, particles and UI icons are generated with Canvas/Graphics;
+- **Zero assets.** Car sprites, particles and UI icons are generated with Canvas/Graphics;
   every sound (engine, boost whoosh, checkpoint chime, wall thud, fanfares) is synthesized
   with the Web Audio API. Nothing can 404.
 - **Lifecycle hygiene.** Instant retry resets the sim, ghosts, hazards, particles and camera in

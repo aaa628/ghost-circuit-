@@ -130,28 +130,29 @@ export const GHOST = {
 export type GhostSlot = 'pb' | 'record' | 'champ' | 'challenger';
 export const GHOST_SLOTS: readonly GhostSlot[] = ['pb', 'record', 'champ', 'challenger'];
 export const GHOST_STYLE: Record<GhostSlot, { color: number; css: string; label: string; short: string }> = {
-  pb: { color: 0x22e6ff, css: '#22e6ff', label: 'PB', short: 'PB' },
-  record: { color: 0xffc531, css: '#ffc531', label: '#1', short: '#1' },
-  champ: { color: 0xd65cff, css: '#d65cff', label: "YESTERDAY'S CHAMP", short: 'CHAMP' },
-  challenger: { color: 0x3dff8a, css: '#3dff8a', label: 'CHALLENGER', short: 'RIVAL' },
+  pb: { color: 0xffffff, css: '#ffffff', label: 'PB', short: 'PB' },
+  record: { color: 0xc8264b, css: '#c8264b', label: '#1', short: '#1' },
+  champ: { color: 0x9a9a9a, css: '#9a9a9a', label: "YESTERDAY'S CHAMP", short: 'CHAMP' },
+  challenger: { color: 0xf0b3c0, css: '#f0b3c0', label: 'CHALLENGER', short: 'RIVAL' },
 };
 
-// ─── Palette ────────────────────────────────────────────────────────────────
+// ─── Palette (black · burgundy #6D001A · white) ──────────────────────────────
 export const COLORS = {
-  background: 0x05060f,
-  grid: 0x1a1f45,
-  gridMajor: 0x262d66,
-  road: 0x0d1024,
-  roadEdge: 0x151a38,
-  sector: [0x22e6ff, 0xffb547, 0xff4fd8] as const,
-  player: 0xffffff,
-  playerGlow: 0xff8a3d,
-  hazard: 0xff3d5a,
-  hazardHot: 0xffa07a,
-  boost: 0xc6ff3d,
-  checkpoint: 0x7cf9ff,
-  checkpointDone: 0x2b3a66,
-  finish: 0xffffff,
+  background: 0x0a0a0a,
+  grid: 0x121212,
+  gridMajor: 0x181818,
+  shoulder: 0x141414,
+  road: 0x1e1e1e,
+  roadLine: 0x2b2b2b,
+  burgundy: 0x6d001a,
+  burgundyHi: 0x9e1030,
+  white: 0xffffff,
+  /** Alternating curb / minimap sector colors. */
+  sector: [0xffffff, 0x9e1030] as const,
+  hazard: 0x6d001a,
+  hazardEdge: 0xffffff,
+  checkpoint: 0xffffff,
+  smoke: 0x7a7a7a,
 } as const;
 
 // ─── Camera ─────────────────────────────────────────────────────────────────
@@ -184,7 +185,7 @@ export function createPhaserConfig(
   return {
     type: P.AUTO,
     parent,
-    backgroundColor: '#05060f',
+    backgroundColor: '#0a0a0a',
     antialias: true,
     roundPixels: false,
     disableContextMenu: true,

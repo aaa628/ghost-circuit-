@@ -2,7 +2,7 @@
 
 > Paste-ready text for the Devpost form. Replace the bracketed links before submitting.
 
-**Tagline:** A daily 60-second neon micro-racing time trial — race the ghosts of real Redditors.
+**Tagline:** A daily 60-second micro-racing time trial — race the ghosts of real Redditors.
 
 **App listing:** [https://developers.reddit.com/apps/ghost-circuit]
 **Demo post (public test subreddit, <200 members):** [https://www.reddit.com/r/YOUR_TEST_SUB/comments/...]
@@ -30,7 +30,7 @@ head-to-head race that lives in the comment thread.
   challenge data, comment-as-user for challenges.
 - **Deterministic daily content**: a Mulberry32 seed from the UTC date drives one of five circuit
   archetypes (Grand Prix, Hairpin Valley, Technical, Speedway, Serpent) and seven feature types
-  (split lanes, neon tunnels, rotating sweepers, sliding gates, chicane fins, pulsing domes, boost
+  (split lanes, tunnels, rotating sweepers, sliding gates, chicane fins, pulsing domes, boost
   pads). Geometry is validated (corner radius, no self-overlap, always-passable hazards).
 - **Fixed 60 Hz simulation** shared by the renderer, an autopilot, the tests and the anti-cheat
   validator. Hazards are pure functions of race time, so ghosts and players see them identically.
@@ -61,7 +61,7 @@ Weekly cups (7-circuit aggregate), community-voted circuit modifiers, flair for 
 and user-designed circuits (the generator already accepts any seed).
 
 ## Judging criteria
-- **Delightful UX**: one-input start, instant retry, millisecond splits, readable neon visuals,
+- **Delightful UX**: one-input start, instant retry, millisecond splits, a flat black/burgundy/white look that reads instantly,
   touch controls, synth audio.
 - **Polish**: validated tracks, smooth fixed-timestep physics, offline fallback, no external assets.
 - **Reddit-like & community-minded**: ghosts of real players, daily board, yesterday's champ,

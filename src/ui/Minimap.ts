@@ -75,7 +75,7 @@ export class Minimap {
     ctx.drawImage(this.base, 0, 0);
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     const cp = this.track.checkpoints[nextCheckpoint] ?? this.track.startLine;
-    ctx.fillStyle = '#7cf9ff';
+    ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(cp.cx * this.scale + this.ox, cp.cy * this.scale + this.oy, 3, 0, Math.PI * 2);
     ctx.fill();
@@ -86,7 +86,7 @@ export class Minimap {
       ctx.fill();
     }
     ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#ff8a3d';
+    ctx.strokeStyle = '#6d001a';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(carX * this.scale + this.ox, carY * this.scale + this.oy, 4, 0, Math.PI * 2);

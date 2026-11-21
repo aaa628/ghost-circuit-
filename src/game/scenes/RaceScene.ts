@@ -83,8 +83,6 @@ export class RaceScene extends Phaser.Scene {
   private obstacleView: ObstacleRenderer | null = null;
   private readonly ghostPlayers = new Map<GhostSlot, GhostPlayer>();
   private car: Phaser.GameObjects.Image | null = null;
-  private carGlow: Phaser.GameObjects.Image | null = null;
-  private thruster: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private boostFx: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private sparks: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   private driftFx: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
@@ -138,60 +136,40 @@ export class RaceScene extends Phaser.Scene {
 
     for (const slot of GHOST_SLOTS) this.ghostPlayers.set(slot, new GhostPlayer(this, slot));
 
-    this.carGlow = this.add
-      .image(0, 0, TEX.glow)
-      .setTint(COLORS.playerGlow)
-      .setAlpha(0.45)
-      .setScale(1.15)
-      .setDepth(10.5)
-      .setBlendMode(Phaser.BlendModes.ADD);
     this.car = this.add
       .image(0, 0, TEX.car)
       .setOrigin(26 / 46, 0.5)
       .setScale(1 / CAR_TEX_SCALE)
       .setDepth(11);
 
-    this.thruster = this.add
-      .particles(0, 0, TEX.dot, {
-        lifespan: { min: 160, max: 320 },
-        speed: { min: 8, max: 46 },
-        scale: { start: 0.42, end: 0 },
-        alpha: { start: 0.85, end: 0 },
-        tint: [0xff8a3d, 0xffd27a, 0xff4d6d],
-        blendMode: Phaser.BlendModes.ADD,
-        emitting: false,
-      })
-      .setDepth(10);
+    // Flat particles, normal blending: white boost puffs, grey tyre smoke, debris.
     this.boostFx = this.add
       .particles(0, 0, TEX.dot, {
-        lifespan: { min: 220, max: 420 },
-        speed: { min: 20, max: 90 },
-        scale: { start: 0.7, end: 0 },
+        lifespan: { min: 220, max: 400 },
+        speed: { min: 20, max: 80 },
+        scale: { start: 0.35, end: 0 },
         alpha: { start: 0.9, end: 0 },
-        tint: [0x7cf9ff, 0xffffff, 0xc6ff3d],
-        blendMode: Phaser.BlendModes.ADD,
+        tint: [COLORS.white],
         emitting: false,
       })
       .setDepth(10);
     this.driftFx = this.add
       .particles(0, 0, TEX.dot, {
-        lifespan: { min: 180, max: 360 },
-        speed: { min: 40, max: 150 },
-        scale: { start: 0.28, end: 0 },
-        alpha: { start: 1, end: 0 },
-        tint: [0xffffff, 0xfff1a8, 0x7cf9ff],
-        blendMode: Phaser.BlendModes.ADD,
+        lifespan: { min: 300, max: 600 },
+        speed: { min: 10, max: 40 },
+        scale: { start: 0.3, end: 0.7 },
+        alpha: { start: 0.35, end: 0 },
+        tint: [COLORS.smoke],
         emitting: false,
       })
-      .setDepth(10);
+      .setDepth(9.5);
     this.sparks = this.add
       .particles(0, 0, TEX.dot, {
-        lifespan: { min: 200, max: 520 },
-        speed: { min: 80, max: 300 },
-        scale: { start: 0.38, end: 0 },
+        lifespan: { min: 200, max: 450 },
+        speed: { min: 80, max: 260 },
+        scale: { start: 0.2, end: 0 },
         alpha: { start: 1, end: 0 },
-        tint: [0xffd27a, 0xff8a3d, 0xffffff],
-        blendMode: Phaser.BlendModes.ADD,
+        tint: [COLORS.white, COLORS.burgundyHi],
         emitting: false,
       })
       .setDepth(10);
@@ -305,7 +283,6 @@ export class RaceScene extends Phaser.Scene {
     this.prevY = s.y;
     this.prevA = s.angle;
     this.trackView?.setCheckpointState(0);
-    this.thruster?.killAll();
     this.boostFx?.killAll();
     this.driftFx?.killAll();
     this.sparks?.killAll();
@@ -460,11 +437,6 @@ export class RaceScene extends Phaser.Scene {
     const boosting = s.boostMs > 0;
 
     this.car?.setPosition(x, y).setRotation(a);
-    this.carGlow
-      ?.setPosition(x, y)
-      .setTint(boosting ? 0x7cf9ff : COLORS.playerGlow)
-      .setScale(boosting ? 1.6 : 1.15)
-      .setAlpha(boosting ? 0.7 : 0.45);
 
     // Effects.
     const fx = Math.cos(a);
@@ -472,9 +444,7 @@ export class RaceScene extends Phaser.Scene {
     const rearX = x - fx * 18;
     const rearY = y - fy * 18;
     if (racing) {
-      if (this.lastInput.throttle > 0 || boosting) {
-        (boosting ? this.boostFx : this.thruster)?.emitParticleAt(rearX, rearY, boosting ? 2 : 1);
-      }
+      if (boosting) this.boostFx?.emitParticleAt(rearX, rearY, 1);
       if (s.drifting && Math.abs(s.lateralSpeed) > 70 && s.speed > 180) {
         this.driftFx?.emitParticleAt(rearX - fy * 8, rearY + fx * 8, 1);
         this.driftFx?.emitParticleAt(rearX + fy * 8, rearY - fx * 8, 1);

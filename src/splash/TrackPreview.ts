@@ -1,5 +1,5 @@
 /**
- * Lightweight Canvas-2D preview of a circuit for the feed splash: neon walls,
+ * Lightweight Canvas-2D preview of a circuit for the feed splash: flat walls,
  * start line, checkpoints, and up to two ghost dots looping their laps.
  * No Phaser here — the inline view must stay fast.
  */
@@ -96,14 +96,11 @@ export class TrackPreview {
             if (i === bounds[s]) g.moveTo(X(k, side), Y(k, side));
             else g.lineTo(X(k, side), Y(k, side));
           }
-          g.shadowColor = color;
-          g.shadowBlur = 8;
           g.strokeStyle = color;
           g.lineWidth = 1.6;
           g.stroke();
         }
       }
-      g.shadowBlur = 0;
       // Start line + checkpoints.
       const line = (ax: number, ay: number, bx: number, by: number, color: string, width: number): void => {
         g.strokeStyle = color;
@@ -113,11 +110,11 @@ export class TrackPreview {
         g.lineTo(bx * this.scale + this.ox, by * this.scale + this.oy);
         g.stroke();
       };
-      for (const cp of track.checkpoints) line(cp.ax, cp.ay, cp.bx, cp.by, 'rgba(124,249,255,0.55)', 1.2);
+      for (const cp of track.checkpoints) line(cp.ax, cp.ay, cp.bx, cp.by, 'rgba(255,255,255,0.4)', 1.2);
       const sl = track.startLine;
       line(sl.ax, sl.ay, sl.bx, sl.by, '#ffffff', 2.5);
       // Hazards as small dots.
-      g.fillStyle = hex(COLORS.hazard);
+      g.fillStyle = hex(COLORS.burgundyHi);
       for (const o of track.obstacles) {
         if (o.type === 'island') continue;
         const x = o.type === 'fin' ? o.bx : o.cx;
@@ -126,7 +123,7 @@ export class TrackPreview {
         g.arc(x * this.scale + this.ox, y * this.scale + this.oy, 2.2, 0, Math.PI * 2);
         g.fill();
       }
-      g.fillStyle = hex(COLORS.boost);
+      g.fillStyle = hex(COLORS.white);
       for (const p of track.boostPads) {
         g.beginPath();
         g.arc(p.cx * this.scale + this.ox, p.cy * this.scale + this.oy, 2.2, 0, Math.PI * 2);
@@ -157,13 +154,13 @@ export class TrackPreview {
       const p = g.timeline.sample(Math.min(t, g.timeline.finishMs), this.pose);
       const x = p.x * this.scale + this.ox;
       const y = p.y * this.scale + this.oy;
-      ctx.shadowColor = g.color;
-      ctx.shadowBlur = 12;
       ctx.fillStyle = g.color;
+      ctx.strokeStyle = '#0a0a0a';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.arc(x, y, 4.5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
+      ctx.stroke();
     }
   }
 

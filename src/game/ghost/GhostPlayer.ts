@@ -12,7 +12,6 @@ export class GhostPlayer {
   label = '';
   private visible = true;
   private readonly sprite: Phaser.GameObjects.Image;
-  private readonly glow: Phaser.GameObjects.Image;
   private readonly trail: Phaser.GameObjects.Graphics;
   private readonly tag: Phaser.GameObjects.Text;
   private readonly pose: GhostPose = { x: 0, y: 0, r: 0, boosting: false, finished: false };
@@ -21,14 +20,7 @@ export class GhostPlayer {
   constructor(scene: Phaser.Scene, readonly slot: GhostSlot) {
     const style = GHOST_STYLE[slot];
     this.color = style.color;
-    this.trail = scene.add.graphics().setDepth(8).setBlendMode(Phaser.BlendModes.ADD);
-    this.glow = scene.add
-      .image(0, 0, TEX.glow)
-      .setDepth(8.5)
-      .setTint(style.color)
-      .setAlpha(0.35)
-      .setScale(0.9)
-      .setBlendMode(Phaser.BlendModes.ADD);
+    this.trail = scene.add.graphics().setDepth(8);
     this.sprite = scene.add
       .image(0, 0, TEX.ghost)
       .setOrigin(26 / 46, 0.5)
@@ -38,12 +30,12 @@ export class GhostPlayer {
       .setDepth(9);
     this.tag = scene.add
       .text(0, 0, '', {
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-        fontSize: '13px',
-        fontStyle: 'bold',
-        color: style.css,
-        backgroundColor: 'rgba(5,6,15,0.72)',
-        padding: { x: 5, y: 2 },
+        fontFamily: '"Helvetica Neue", Arial, sans-serif',
+        fontSize: '12px',
+        fontStyle: '800',
+        color: slot === 'record' ? '#ffffff' : '#000000',
+        backgroundColor: style.css,
+        padding: { x: 6, y: 3 },
       })
       .setOrigin(0.5, 1)
       .setDepth(12)
@@ -83,7 +75,6 @@ export class GhostPlayer {
   private applyVisibility(): void {
     const on = this.shown;
     this.sprite.setVisible(on);
-    this.glow.setVisible(on);
     this.trail.setVisible(on);
     this.tag.setVisible(on);
   }
@@ -94,7 +85,6 @@ export class GhostPlayer {
     const p = tl.sample(tMs, this.pose);
     this.sprite.setPosition(p.x, p.y).setRotation(p.r);
     this.sprite.setAlpha(p.finished ? GHOST.ALPHA * 0.55 : GHOST.ALPHA);
-    this.glow.setPosition(p.x, p.y).setAlpha(p.boosting ? 0.6 : 0.3);
     const inv = 1 / Math.max(0.3, zoom);
     this.tag.setPosition(p.x, p.y - 22 * Math.min(1.6, inv)).setScale(inv);
 
@@ -109,7 +99,7 @@ export class GhostPlayer {
       const x = tl.x[i] as number;
       const y = tl.y[i] as number;
       const age = (k - i) / GHOST.TRAIL_FRAMES;
-      g.lineStyle(7 * (1 - age) + 1, this.color, 0.32 * (1 - age));
+      g.lineStyle(4 * (1 - age) + 1, this.color, 0.28 * (1 - age));
       g.lineBetween(px, py, x, y);
       px = x;
       py = y;
@@ -118,7 +108,6 @@ export class GhostPlayer {
 
   destroy(): void {
     this.sprite.destroy();
-    this.glow.destroy();
     this.trail.destroy();
     this.tag.destroy();
   }

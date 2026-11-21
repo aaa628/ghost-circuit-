@@ -2,7 +2,7 @@
   "private": true,
   "name": "ghost-circuit",
   "version": "1.0.0",
-  "description": "Ghost Circuit \u2014 a daily 60-second neon micro-racing time trial for Reddit, raced against the ghosts of real players.",
+  "description": "Ghost Circuit \u2014 a daily 60-second micro-racing time trial for Reddit, raced against the ghosts of real players.",
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",

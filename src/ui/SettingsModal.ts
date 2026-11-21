@@ -40,7 +40,7 @@ export class SettingsModal {
         h('li', { text: 'One new circuit every day at 00:00 UTC — everyone races the same one.' }),
         h('li', { text: 'Clear every checkpoint in order, then cross the finish line within 60 seconds.' }),
         h('li', { text: 'Race translucent ghosts of real players: your PB, today’s #1, yesterday’s champ, or a challenger.' }),
-        h('li', { text: 'Boost pads launch you; red hazards move to the race clock — learn their rhythm.' }),
+        h('li', { text: 'Burgundy boost pads launch you; burgundy-and-white hazards move to the race clock — learn their rhythm.' }),
         h('li', { text: 'Split lanes: the inner lane is shorter but tighter. Drift (Space / DRIFT) for hairpins.' }),
         h('li', { text: 'R restarts instantly. Share your run to challenge friends in the comments.' }),
       ),

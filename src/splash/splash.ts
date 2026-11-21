@@ -24,6 +24,8 @@ const preview = new TrackPreview($<HTMLCanvasElement>('preview'));
 let challenge: ChallengeRef | null = null;
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 function displayName(run: RunRecord): string {
   return run.username === 'PACE BOT' || service.platform === 'local' ? run.username : `u/${run.username}`;
 }
@@ -39,7 +41,7 @@ async function render(): Promise<void> {
   $('track-name').textContent = track.name;
   const hazards = track.obstacles.filter((o) => o.type === 'sweeper' || o.type === 'pulsar' || o.type === 'gate').length;
   $('track-facts').textContent =
-    `${track.archetypeLabel} · ${track.checkpoints.length} checkpoints · ${track.boostPads.length} boost pads · ${hazards} hazards` +
+    `${track.archetypeLabel} · ${track.checkpoints.length} checkpoints · ${plural(track.boostPads.length, 'boost pad')} · ${plural(hazards, 'hazard')}` +
     (track.zones.some((z) => z.kind === 'split') ? ' · split lanes' : '');
   preview.setTrack(track);
 
