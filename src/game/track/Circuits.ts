@@ -61,11 +61,6 @@ export function isCircuitKey(value: unknown): value is string {
   return isDateKey(value) || (typeof value === 'string' && isPermanent(value));
 }
 
-/** "NOV 21 · #11" for dailies, "ALL-TIME" for permanent circuits. */
-export function circuitBadge(id: string, circuitNo: number): string {
-  return isPermanent(id) ? 'ALL-TIME CIRCUIT' : `${formatDateLabel(id)} · #${circuitNo}`;
-}
-
 /** Short board label: "NOV 21" or "GLITCH RIDGE". */
 export function boardLabel(id: string): string {
   return permanentCircuit(id)?.name ?? formatDateLabel(id);

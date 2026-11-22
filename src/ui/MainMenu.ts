@@ -28,17 +28,43 @@ export type MenuCallbacks = {
 
 type Row = { circuit: MenuCircuit; record: HTMLElement; mine: HTMLElement; racers: HTMLElement; preview: TrackPreview };
 
+/** Section heading copy: what "daily" vs "permanent" means for the player. */
+const GROUPS: Record<MenuCircuit['kind'], { badge: string; title: string; note: string }> = {
+  daily: { badge: 'Daily', title: 'Temporary', note: 'New track and a fresh board every day. Gone in' },
+  alltime: { badge: 'Permanent', title: 'Always here', note: 'Same track forever. Records never reset.' },
+};
+
 export class MainMenu {
   readonly root: HTMLElement;
   private readonly rows: Row[] = [];
-  private readonly countdown: HTMLElement;
+  private readonly countdowns: HTMLElement[] = [];
   private readonly player: HTMLElement;
   private readonly removers: Array<() => void> = [];
   private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(parent: HTMLElement, circuits: MenuCircuit[], private readonly cb: MenuCallbacks) {
     const list = h('ol', { class: 'menu-list' });
+    let lastKind: MenuCircuit['kind'] | null = null;
     for (const c of circuits) {
+      if (c.kind !== lastKind) {
+        lastKind = c.kind;
+        const g = GROUPS[c.kind];
+        const note = h('span', { class: 'menu-group-note' }, g.note);
+        if (c.kind === 'daily') {
+          const cd = h('span', { class: 'menu-foot-v', text: '--:--:--' });
+          this.countdowns.push(cd);
+          note.append(' ', cd);
+        }
+        list.append(
+          h(
+            'li',
+            { class: `menu-group kind-${c.kind}`, 'aria-hidden': 'true' },
+            h('span', { class: `kind-badge ${c.kind}`, text: g.badge }),
+            h('span', { class: 'menu-group-title', text: g.title }),
+            note,
+          ),
+        );
+      }
       const canvas = h('canvas', { class: 'menu-preview', 'aria-hidden': 'true' });
       const record = h('span', { class: 'menu-stat-v', text: '—' });
       const mine = h('span', { class: 'menu-stat-v', text: '—' });
@@ -57,7 +83,7 @@ export class MainMenu {
           h(
             'div',
             { class: 'menu-info' },
-            h('span', { class: 'menu-tag', text: c.tag }),
+            h('span', { class: 'menu-tagline' }, h('span', { class: `kind-badge small ${c.kind}`, text: c.kind === 'daily' ? 'Daily' : 'Permanent' }), h('span', { class: 'menu-tag', text: c.tag })),
             h('span', { class: 'menu-name', text: c.name }),
             h('span', { class: 'menu-line', text: c.tagline }),
             h(
@@ -80,7 +106,8 @@ export class MainMenu {
       listen(boards, 'click', () => cb.onBoards()),
       listen(help, 'click', () => cb.onHelp()),
     );
-    this.countdown = h('span', { class: 'menu-foot-v', text: '--:--:--' });
+    const footCountdown = h('span', { class: 'menu-foot-v', text: '--:--:--' });
+    this.countdowns.push(footCountdown);
     this.player = h('span', { class: 'menu-foot-v', text: '—' });
 
     this.root = h(
@@ -103,7 +130,7 @@ export class MainMenu {
           h(
             'div',
             { class: 'menu-status' },
-            h('span', {}, 'New daily in ', this.countdown),
+            h('span', {}, 'New daily in ', footCountdown),
             h('span', {}, 'Racing as ', this.player),
           ),
         ),
@@ -132,7 +159,8 @@ export class MainMenu {
     this.root.classList.remove('hidden');
     for (const r of this.rows) r.preview.setTrack(r.circuit.track);
     const tick = (): void => {
-      this.countdown.textContent = formatCountdown(this.cb.nextDailyAt() - Date.now());
+      const text = formatCountdown(this.cb.nextDailyAt() - Date.now());
+      for (const c of this.countdowns) c.textContent = text;
     };
     tick();
     if (this.timer) clearInterval(this.timer);

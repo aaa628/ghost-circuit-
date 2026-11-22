@@ -8,8 +8,8 @@
 import { GHOST_SLOTS, GHOST_STYLE, MAX_TIME_MS, type GhostSlot } from '../game/config';
 import type { FrameInfo } from '../game/scenes/RaceScene';
 import type { Track } from '../game/track/TrackTypes';
-import { circuitBadge } from '../game/track/Circuits';
-import { formatCountdown } from '../game/util/date';
+import { isPermanent } from '../game/track/Circuits';
+import { formatCountdown, formatDateLabel } from '../game/util/date';
 import { formatDelta, formatTime } from '../shared/api';
 import { h, icon, isTouchDevice, listen, setText, toggleClass } from './dom';
 import { Minimap } from './Minimap';
@@ -140,7 +140,12 @@ export class Hud {
 
   /** nextDayAt: when the daily rolls over, or null for an all-time circuit. */
   setTrack(track: Track, nextDayAt: number | null): void {
-    setText(this.dateBadge, circuitBadge(track.dateKey, track.circuitNo));
+    const perm = isPermanent(track.dateKey);
+    this.dateBadge.replaceChildren(
+      h('span', { class: `kind-badge small ${perm ? 'alltime' : 'daily'}`, text: perm ? 'Permanent' : 'Daily' }),
+      perm ? ' All-time board' : ` ${formatDateLabel(track.dateKey)} · #${track.circuitNo}`,
+    );
+    if (this.dateBadge.parentElement) toggleClass(this.dateBadge.parentElement, 'perm', perm);
     setText(this.trackName, track.name);
     this.minimap.setTrack(track);
     this.nextDayAt = nextDayAt;

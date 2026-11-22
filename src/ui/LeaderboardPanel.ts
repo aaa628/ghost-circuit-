@@ -3,6 +3,7 @@
  * the panel itself: Today / Yesterday tabs, top 10 with "Race ghost" buttons,
  * a pinned row for the player, challenge-code entry and (locally) nickname.
  */
+import { isPermanent } from '../game/track/Circuits';
 import { formatDateLabel } from '../game/util/date';
 import { formatTime, type LeaderboardEntry, type LeaderboardResponse } from '../shared/api';
 import { clear, h, icon, listen } from './dom';
@@ -97,6 +98,7 @@ export class LeaderboardPanel {
   private readonly list: HTMLElement;
   private tabs: HTMLButtonElement[] = [];
   private readonly tabRow: HTMLElement;
+  private readonly kindLine: HTMLElement;
   private tabRemovers: Array<() => void> = [];
   private readonly removers: Array<() => void> = [];
   private dates: string[] = [];
@@ -108,8 +110,9 @@ export class LeaderboardPanel {
   constructor(parent: HTMLElement, private readonly cb: LeaderboardPanelCallbacks) {
     const closeBtn = h('button', { class: 'icon-btn panel-close', type: 'button', 'aria-label': 'Close leaderboard' }, icon('close'));
     this.removers.push(listen(closeBtn, 'click', () => cb.onClose()));
-    const tabRow = h('div', { class: 'tabs', role: 'tablist' });
+    const tabRow = h('div', { class: 'tab-groups', role: 'tablist' });
     this.tabRow = tabRow;
+    this.kindLine = h('p', { class: 'board-kind' });
     this.list = h('div', { class: 'lb-container' });
 
     const codeInput = h('input', {
@@ -158,6 +161,7 @@ export class LeaderboardPanel {
       { class: 'panel', 'aria-label': 'Leaderboard', 'aria-hidden': 'true' },
       h('header', { class: 'panel-head' }, h('h2', { text: 'Leaderboard' }), closeBtn),
       tabRow,
+      this.kindLine,
       this.list,
       codeRow,
       nickRow,
@@ -173,10 +177,29 @@ export class LeaderboardPanel {
   open(tabs: ReadonlyArray<{ label: string; date: string }>, active: number, me: string | null): void {
     for (const r of this.tabRemovers.splice(0)) r();
     this.tabRow.replaceChildren();
+    // Two labelled rows: temporary daily boards, then permanent all-time boards.
+    const rows = new Map<boolean, HTMLElement>();
+    const rowFor = (perm: boolean): HTMLElement => {
+      let row = rows.get(perm);
+      if (!row) {
+        row = h('div', { class: 'tabs' });
+        this.tabRow.append(
+          h(
+            'div',
+            { class: 'tab-group' },
+            h('span', { class: `kind-badge small ${perm ? 'alltime' : 'daily'}`, text: perm ? 'Permanent' : 'Daily' }),
+            row,
+          ),
+        );
+        rows.set(perm, row);
+      }
+      return row;
+    };
     this.tabs = tabs.map((t, i) => {
-      const b = h('button', { class: 'tab', type: 'button', role: 'tab', text: t.label });
+      const perm = isPermanent(t.date);
+      const b = h('button', { class: `tab ${perm ? 'tab-perm' : 'tab-daily'}`, type: 'button', role: 'tab', text: t.label });
       this.tabRemovers.push(listen(b, 'click', () => this.select(i)));
-      this.tabRow.append(b);
+      rowFor(perm).append(b);
       return b;
     });
     this.dates = tabs.map((t) => t.date);
@@ -204,6 +227,11 @@ export class LeaderboardPanel {
       t.setAttribute('aria-selected', k === i ? 'true' : 'false');
     });
     const date = this.dates[i] ?? this.dates[0] ?? '';
+    const perm = isPermanent(date);
+    this.kindLine.className = `board-kind ${perm ? 'alltime' : 'daily'}`;
+    this.kindLine.textContent = perm
+      ? 'Permanent board: records never reset.'
+      : `Daily board for ${formatDateLabel(date)}: closes at 00:00 UTC and a new track replaces it.`;
     const token = ++this.loadToken;
     renderLeaderboardList(this.list, null, this.me, null, { loading: true });
     this.cb

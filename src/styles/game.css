@@ -97,6 +97,8 @@ kbd {
   border-left: 4px solid var(--burgundy);
   max-width: 44vw;
 }
+.badge.perm { border-left-color: var(--white); }
+.badge-date .kind-badge { margin-right: 4px; }
 .badge-date { font-size: 10px; color: var(--grey); letter-spacing: 0.12em; font-weight: 700; text-transform: uppercase; }
 .badge-name { font-size: 14px; font-weight: 900; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hud-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -458,7 +460,29 @@ body.has-touch .hud-tl .minimap { width: 92px !important; height: 92px !importan
 .panel.open { transform: none; }
 .panel-head { display: flex; justify-content: space-between; align-items: center; }
 .panel-head h2 { margin: 0; font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; }
-.tabs { display: flex; gap: 0; margin: 14px 0 6px; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; }
+/* Daily (temporary) vs Permanent labels, used in the menu, HUD and boards. */
+.kind-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.kind-badge.daily { background: var(--burgundy); color: var(--white); border: 1px solid var(--burgundy-hi); }
+.kind-badge.alltime { background: var(--white); color: var(--ink); border: 1px solid var(--white); }
+.kind-badge.small { padding: 2px 6px; font-size: 9px; }
+
+.tab-groups { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 6px; }
+.tab-group { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 8px; }
+.tab-group .kind-badge { justify-self: start; }
+.tabs { display: flex; gap: 0; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; }
+.board-kind { margin: 4px 0 8px; font-size: 12px; color: var(--grey); }
+.board-kind.daily { color: var(--rose); }
 .tab { flex: 1; padding: 9px; border: 0; background: transparent; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--grey); }
 .tab.active { color: var(--ink); background: var(--white); }
 .panel-section { margin-top: 18px; }
@@ -591,8 +615,21 @@ body.has-touch .hud-tl .minimap { width: 92px !important; height: 92px !importan
 }
 .menu-preview { width: 84px; height: 64px; border-radius: var(--radius); background: var(--surface); }
 .menu-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.menu-tagline { display: flex; align-items: center; gap: 8px; }
 .menu-tag { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--grey); }
-.kind-daily .menu-tag { color: var(--rose); }
+.menu-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 18px 0 8px;
+  border-bottom: 1px solid var(--line);
+}
+.menu-group .kind-badge { align-self: center; }
+.menu-group-title { font-family: var(--display); font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; }
+.menu-group-note { font-size: 12px; color: var(--grey); }
+.menu-group.kind-daily .menu-group-note { color: var(--rose); }
+.menu-group.kind-alltime { margin-top: 10px; }
 .menu-name { font-family: var(--display); font-size: 20px; font-weight: 900; letter-spacing: -0.01em; text-transform: uppercase; }
 .menu-line { font-size: 13px; color: var(--grey); }
 .menu-stats { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 2px; font-size: 12px; font-variant-numeric: tabular-nums; }
