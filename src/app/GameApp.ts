@@ -115,7 +115,15 @@ export class GameApp {
 
   async start(): Promise<void> {
     this.buildUi();
-    this.service.onModeChange = () => this.hud?.setOffline(true);
+    this.service.onModeChange = (m) => {
+      this.hud?.setOffline(m === 'offline');
+      if (m === 'online') {
+        // Back on the real boards: refresh whatever is on screen.
+        this.toaster?.show('Reconnected to the live leaderboard', 'good');
+        this.panel?.refresh();
+        if (this.menu?.isOpen) this.loadMenuStats();
+      }
+    };
     await this.service.init();
     this.hud?.setOffline(this.service.mode === 'offline');
     setNamePrefix(this.service.platform === 'local' ? '' : 'u/');
@@ -302,6 +310,11 @@ export class GameApp {
     menu.show();
     this.scene?.restart(false);
     this.syncInputEnabled();
+    this.loadMenuStats();
+  }
+
+  /** Fill each menu row's #1 / your best / racer count from the boards. */
+  private loadMenuStats(): void {
     const today = this.service.today();
     for (const id of [today, ...PERMANENT_CIRCUITS.map((c) => c.id)]) {
       this.service
@@ -660,7 +673,12 @@ export class GameApp {
     }
     const run = await this.service.getRun(id);
     if (!run) {
-      this.toaster?.show('Challenge not found (codes expire after 10 days)', 'bad');
+      this.toaster?.show(
+        this.service.mode === 'offline'
+          ? 'Can’t reach the leaderboard right now. Check your connection and try the code again.'
+          : 'Challenge not found (codes expire after 10 days)',
+        'bad',
+      );
       return;
     }
     this.raceRun(run);

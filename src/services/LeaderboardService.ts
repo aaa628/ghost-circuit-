@@ -42,7 +42,12 @@ import {
 } from './platform';
 import { pruneByDate, readJson, readString, removeKey, writeJson, writeString } from './storage';
 
-const API_TIMEOUT_MS = 6000;
+/** Per-request timeout. Devvit servers can take several seconds to wake up. */
+const API_TIMEOUT_MS = 12000;
+/** Startup attempts before falling back to the device-only board. */
+const INIT_ATTEMPTS = 3;
+/** While offline, how often to try the server again (also tried on demand). */
+const RECONNECT_EVERY_MS = 15000;
 const NICK_KEY = 'gc:v1:nickname';
 const PB_PREFIX = 'gc:v2:pb:';
 const OFFLINE_PREFIX = 'gc:v2:offline:';
@@ -212,9 +217,14 @@ export class LeaderboardService {
   username: string | null = null;
   postDateKey: string | null = null;
   todayPostId: string | null = null;
-  /** Fired when the service drops to offline mode. */
+  /** Fired when the service drops to offline mode or comes back online. */
   onModeChange: ((mode: ServiceMode) => void) | null = null;
   private clockOffset = 0;
+  /** True once a server answered (or we run inside Reddit): worth reconnecting. */
+  private hasServer = IS_DEVVIT;
+  private reconnecting: Promise<boolean> | null = null;
+  private lastReconnectAt = 0;
+  private reconnectTimer: ReturnType<typeof setInterval> | null = null;
   private readonly offline = new OfflineStore();
   private readonly runCache = new Map<string, RunRecord>();
   private readonly paceCache = new Map<string, RunRecord>();
@@ -246,18 +256,33 @@ export class LeaderboardService {
 
   async init(): Promise<void> {
     this.postDateKey = postDateKey();
-    try {
-      const info = await this.request<InitResponse>('/api/init');
-      this.platform = info.platform;
-      this.clockOffset = Math.abs(info.serverTime - Date.now()) > 2000 ? info.serverTime - Date.now() : 0;
-      this.username = info.platform === 'local' ? this.nickname : info.username;
-      this.postDateKey = info.postDateKey ?? this.postDateKey;
-      this.todayPostId = info.todayPostId;
-    } catch (err) {
-      console.warn('[leaderboard] API unavailable, using offline leaderboard', err);
+    let ok = false;
+    for (let attempt = 1; attempt <= INIT_ATTEMPTS && !ok; attempt++) {
+      try {
+        await this.handshake();
+        ok = true;
+      } catch (err) {
+        // A definite "no server here" (standalone page) is not worth retrying.
+        if (err instanceof HttpError && err.status === 404 && !this.hasServer) break;
+        console.warn(`[leaderboard] API attempt ${attempt} failed`, err);
+      }
+    }
+    if (!ok) {
+      console.warn('[leaderboard] API unavailable, using the device-only leaderboard for now');
       this.goOffline();
     }
     pruneByDate(OFFLINE_PREFIX, this.storedDates());
+  }
+
+  /** GET /api/init and adopt the server's identity and clock. */
+  private async handshake(): Promise<void> {
+    const info = await this.request<InitResponse>('/api/init');
+    this.hasServer = true;
+    this.platform = info.platform;
+    this.clockOffset = Math.abs(info.serverTime - Date.now()) > 2000 ? info.serverTime - Date.now() : 0;
+    this.username = info.platform === 'local' ? this.nickname : info.username;
+    this.postDateKey = info.postDateKey ?? this.postDateKey;
+    this.todayPostId = info.todayPostId;
   }
 
   private goOffline(): void {
@@ -265,6 +290,59 @@ export class LeaderboardService {
     this.mode = 'offline';
     this.username = this.platform === 'local' ? this.nickname : (this.username ?? currentUsername() ?? 'you');
     this.onModeChange?.('offline');
+    if (this.hasServer && !this.reconnectTimer) {
+      this.reconnectTimer = setInterval(() => void this.reconnect(), RECONNECT_EVERY_MS);
+    }
+  }
+
+  /**
+   * Offline is a temporary state when a real server exists: try it again
+   * (throttled), and on success switch back online and upload any best lap
+   * that only made it into this device's storage.
+   */
+  async reconnect(force = false): Promise<boolean> {
+    if (this.mode === 'online') return true;
+    if (!this.hasServer) return false;
+    if (this.reconnecting) return this.reconnecting;
+    if (!force && Date.now() - this.lastReconnectAt < 4000) return false;
+    this.lastReconnectAt = Date.now();
+    this.reconnecting = (async () => {
+      try {
+        await this.handshake();
+      } catch {
+        return false;
+      }
+      this.mode = 'online';
+      if (this.reconnectTimer) clearInterval(this.reconnectTimer);
+      this.reconnectTimer = null;
+      await this.uploadDeviceBests();
+      this.onModeChange?.('online');
+      return true;
+    })().finally(() => {
+      this.reconnecting = null;
+    });
+    return this.reconnecting;
+  }
+
+  /** Send device-only PBs (never accepted by the server) for boards still open. */
+  private async uploadDeviceBests(): Promise<void> {
+    if (!this.username) return;
+    const t = this.today();
+    for (const date of [t, ...PERMANENT_CIRCUITS.map((c) => c.id)]) {
+      const pb = this.getPersonalBest(date);
+      if (!pb || pb.runId !== null) continue;
+      try {
+        await this.submitRun({ dateKey: date, timeMs: pb.timeMs, ghostData: pb.ghostData });
+      } catch {
+        // Best effort: it will be retried on the next reconnect.
+      }
+      if (this.mode !== 'online') return;
+    }
+  }
+
+  /** Before a server call: if we're offline, give the server another chance. */
+  private async ensureOnline(): Promise<void> {
+    if (this.mode === 'offline') await this.reconnect();
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -303,6 +381,7 @@ export class LeaderboardService {
   }
 
   async getLeaderboard(date: string, limit = 10): Promise<LeaderboardResponse> {
+    await this.ensureOnline();
     if (this.mode === 'online') {
       try {
         return await this.request<LeaderboardResponse>(`/api/leaderboard/${date}?limit=${limit}`);
@@ -318,6 +397,7 @@ export class LeaderboardService {
     if (!isRunId(id)) return null;
     const cached = this.runCache.get(id);
     if (cached) return cached;
+    await this.ensureOnline();
     let run: RunRecord | null = null;
     if (this.mode === 'online') {
       try {
@@ -335,6 +415,7 @@ export class LeaderboardService {
   }
 
   async getChampion(date: string): Promise<RunRecord | null> {
+    await this.ensureOnline();
     if (this.mode === 'online') {
       try {
         const body = await this.request<{ champion: unknown }>(`/api/champion/${date}`);
@@ -360,6 +441,7 @@ export class LeaderboardService {
   }
 
   async submitRun(req: SubmitRunRequest): Promise<SubmitRunResponse> {
+    await this.ensureOnline();
     const reason = this.preflight(generateTrack(req.dateKey), req.timeMs, req.ghostData);
     if (reason) return { accepted: false, reason };
     let result: SubmitRunResponse;
@@ -381,7 +463,10 @@ export class LeaderboardService {
     }
     if (result.accepted && result.isPersonalBest) {
       // savePersonalBest itself refuses anything slower than the stored best.
-      this.savePersonalBest(req.dateKey, { timeMs: req.timeMs, ghostData: req.ghostData, runId: result.run.id });
+      // Only a server-accepted run gets an id; device-only runs stay null so
+      // they're uploaded once the server is reachable again.
+      const serverRun = this.mode === 'online';
+      this.savePersonalBest(req.dateKey, { timeMs: req.timeMs, ghostData: req.ghostData, runId: serverRun ? result.run.id : null });
     }
     if (result.accepted) {
       this.runCache.set(result.run.id, { ...result.run, ghostData: req.ghostData });
