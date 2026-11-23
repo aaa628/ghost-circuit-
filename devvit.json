@@ -52,5 +52,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch"
+  },
+  "dev": {
+    "subreddit": "ghost_circuit_dev"
   }
 }
