@@ -1,9 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
   "name": "ghost-circuit",
-  "dev": {
-    "subreddit": "GhostCircuitGame"
-  },
   "post": {
     "dir": "dist/client",
     "entrypoints": {
