@@ -38,7 +38,12 @@ const HARD_RATIO = 1.5;
 const SOFT_RATIO = 1.04;
 const SOFT_MAX_FRACTION = 0.15;
 const SOFT_MIN_ALLOWED = 10;
-const MAX_MEAN_SPEED = CAR.MAX_SPEED * 1.045;
+/**
+ * Whole-lap distance may exceed the distance the speed envelope allows
+ * (top speed, plus boosts and their fade) by at most this factor. A fixed
+ * MAX_SPEED-based mean used to reject honest laps that chained boost pads.
+ */
+const MEAN_ENVELOPE_RATIO = 1.045;
 /** A boost flag is only legitimate this long after touching a pad. */
 const BOOST_WINDOW_MS = CAR.BOOST_MS + 120;
 
@@ -84,6 +89,7 @@ export function validateFrames(track: Track, timeMs: number, f: GhostFrames): Va
   let envelope: number = CAR.MAX_SPEED;
   let softViolations = 0;
   let pathLength = 0;
+  let envelopeDistance = 0;
   let lastPadMs = Number.NEGATIVE_INFINITY;
   if (onBoostPad(track, X(0), Y(0))) lastPadMs = 0;
 
@@ -105,6 +111,7 @@ export function validateFrames(track: Track, timeMs: number, f: GhostFrames): Va
     if ((f.b[i] as number) === 1 && t1 - lastPadMs > BOOST_WINDOW_MS) return fail('boost without a boost pad');
     if (boosting) envelope = CAR.BOOST_MAX_SPEED;
     else envelope = CAR.MAX_SPEED + (envelope - CAR.MAX_SPEED) * Math.exp((-ENVELOPE_DECAY_PER_S * dt) / 1000);
+    envelopeDistance += (envelope * dt) / 1000;
     const ratio = (dist - QUANT_SLACK_UNITS) / ((envelope * dt) / 1000);
     if (ratio > HARD_RATIO) return fail('ghost exceeds maximum vehicle speed');
     if (ratio > SOFT_RATIO) softViolations++;
@@ -123,7 +130,7 @@ export function validateFrames(track: Track, timeMs: number, f: GhostFrames): Va
   }
 
   if (softViolations > Math.max(SOFT_MIN_ALLOWED, n * SOFT_MAX_FRACTION)) return fail('ghost is faster than the car can drive');
-  if (pathLength / (timeMs / 1000) > MAX_MEAN_SPEED) return fail('average speed is impossible');
+  if (pathLength > envelopeDistance * MEAN_ENVELOPE_RATIO) return fail('average speed is impossible');
   if (nextCp < cps.length) return fail('ghost skipped a checkpoint');
   if (finishedAt < 0) {
     // The finish frame sits exactly on the line; quantization can leave it a hair short.

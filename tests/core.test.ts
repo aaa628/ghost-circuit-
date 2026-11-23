@@ -241,3 +241,34 @@ describe('car physics energy', () => {
     }
   });
 });
+
+describe('anti-cheat average speed', () => {
+  // Regression: the mean-speed check used a fixed MAX_SPEED×1.045 limit that
+  // ignored boosts, so an honest flat-out lap chaining boost pads was rejected.
+  it('accepts an honest flat-out lap whose average beats the old fixed limit', () => {
+    const track = generateTrack('perm-ridge');
+    const sim = new RaceSim(track);
+    const pilot = new Autopilot(track, { pace: 1, apex: 0.2, innerLane: false, steerGain: 3 });
+    sim.start();
+    for (let i = 0; i < MAX_TICKS + 2 && sim.status === 'racing'; i++) {
+      const inp = { ...pilot.drive(sim) };
+      inp.drift = Math.abs(inp.steer) > 0.6;
+      if (inp.brake > 0) {
+        inp.brake = 0;
+        inp.throttle = 1;
+      }
+      sim.step(inp);
+    }
+    assert.equal(sim.status, 'finished');
+    const ghost = sim.recorder.encode();
+    const f = decodeGhost(ghost);
+    assert.ok(f);
+    let dist = 0;
+    for (let i = 1; i < f.count; i++) {
+      dist += Math.hypot(((f.x[i] as number) - (f.x[i - 1] as number)) / 10, ((f.y[i] as number) - (f.y[i - 1] as number)) / 10);
+    }
+    assert.ok(dist / (sim.finishTimeMs / 1000) > CAR.MAX_SPEED * 1.045, 'lap should average above the old fixed limit');
+    const v = validateRun(track, sim.finishTimeMs, ghost);
+    assert.ok(v.ok, v.ok ? '' : v.reason);
+  });
+});

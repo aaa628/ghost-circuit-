@@ -543,7 +543,9 @@ export class GameApp {
     const prevPbMs = localPb === null ? serverPb : serverPb === null ? localPb : Math.min(localPb, serverPb);
     const finished = result.status === 'finished';
     // A lap that fails the anti-cheat never counts as a PB (the server would refuse it too).
-    const lapValid = finished && !!result.ghostData && this.service.preflight(track, result.timeMs, result.ghostData) === null;
+    const lapProblem = finished && result.ghostData ? this.service.preflight(track, result.timeMs, result.ghostData) : null;
+    if (lapProblem) console.warn('[ghost-circuit] lap failed the anti-cheat check:', lapProblem);
+    const lapValid = finished && !!result.ghostData && lapProblem === null;
     const isPb = lapValid && (prevPbMs === null || result.timeMs < prevPbMs);
 
     const versusGhost = this.mode.kind === 'challenge' ? this.ghosts.challenger : this.mode.kind === 'champ' ? this.ghosts.champ : undefined;
@@ -587,7 +589,15 @@ export class GameApp {
       standing: this.leaderboard?.me
         ? { rank: this.leaderboard.me.rank, total: this.leaderboard.total, gapToNextMs: this.leaderboard.me.gapToNextMs, nextUsername: this.leaderboard.me.nextUsername }
         : null,
-      note: !ranked ? 'Practice run — only today’s circuit is ranked.' : loggedOut ? 'Log in to put your time on the board.' : isPb ? 'Saving your time…' : null,
+      note: lapProblem
+        ? `This lap can’t be counted: ${lapProblem}. Please screenshot this and report it.`
+        : !ranked
+          ? 'Practice run — only today’s circuit is ranked.'
+          : loggedOut
+            ? 'Log in to put your time on the board.'
+            : isPb
+              ? 'Saving your time…'
+              : null,
       noteAction: !ranked ? 'Race today’s circuit' : loggedOut ? 'Log in' : null,
       leaderboard: this.leaderboard,
       leaderboardLoading: canSubmit && isPb && !loggedOut,
