@@ -43,7 +43,8 @@ body {
 .game-canvas { position: absolute; inset: 0; }
 .game-canvas canvas { display: block; }
 .ui-layer { position: absolute; inset: 0; pointer-events: none; }
-.ui-layer button, .ui-layer input, .ui-layer textarea, .ui-layer label, .ui-layer .panel, .ui-layer .modal-backdrop { pointer-events: auto; }
+/* Anything that scrolls or covers the game must take pointer events itself, or wheel/swipe falls through to the canvas. */
+.ui-layer button, .ui-layer input, .ui-layer textarea, .ui-layer label, .ui-layer .panel, .ui-layer .modal-backdrop, .ui-layer .menu:not(.hidden) { pointer-events: auto; }
 
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { cursor: default; }

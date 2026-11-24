@@ -27,7 +27,7 @@ import {
   promptLogin,
   shareChallenge,
 } from '../services/platform';
-import { readJson, writeJson } from '../services/storage';
+import { readJson, readString, writeJson, writeString } from '../services/storage';
 import {
   formatTime,
   fromChallengeCode,
@@ -56,6 +56,7 @@ type Mode =
 type LoadedGhost = { run: RunRecord; name: string };
 
 const VIS_KEY = 'gc:v1:ghost-visibility';
+const PB_RIVAL_KEY = 'gc:v1:pb-with-rival';
 const SETTINGS_KEY = 'gc:v1:settings';
 
 const isVisibility = (v: unknown): v is Record<GhostSlot, boolean> =>
@@ -86,6 +87,11 @@ export class GameApp {
   private track: Track | null = null;
   private readonly ghosts: Partial<Record<GhostSlot, LoadedGhost>> = {};
   private visibility: Record<GhostSlot, boolean>;
+  /**
+   * PB ghost visibility while a rival (#1, challenger or champ) is on track.
+   * Off by default: the PB car just clutters a head-to-head race.
+   */
+  private pbWithRival = false;
   private settings: Settings;
   private leaderboard: LeaderboardResponse | null = null;
   private ghostToken = 0;
@@ -103,6 +109,7 @@ export class GameApp {
     this.loadingEl = h('div', { class: 'loading' }, h('div', { class: 'loading-logo', text: 'GHOST CIRCUIT' }), h('div', { class: 'loading-sub', text: 'Generating today’s circuit…' }));
     root.append(this.gameEl, this.uiEl, this.loadingEl);
     this.visibility = readJson(VIS_KEY, isVisibility) ?? { pb: true, record: true, champ: true, challenger: true };
+    this.pbWithRival = readString(PB_RIVAL_KEY) === '1';
     this.settings = readJson(SETTINGS_KEY, isSettings) ?? { startMode: 'instant' };
     this.input = new InputController({
       onRestart: () => this.retry(),
@@ -249,7 +256,7 @@ export class GameApp {
       this.scheduleAutoStart();
     }
     this.loadingEl.classList.add('gone');
-    for (const slot of GHOST_SLOTS) scene.setGhostVisible(slot, this.visibility[slot]);
+    this.applyVisibility();
     this.applyModeUi();
     void this.loadGhosts();
     if (this.showMenuOnReady) this.openMenu();
@@ -461,14 +468,30 @@ export class GameApp {
     return true;
   }
 
+  /** A ghost to race head-to-head is loaded (not the player's own PB). */
+  private get hasRival(): boolean {
+    return !!(this.ghosts.record || this.ghosts.challenger || this.ghosts.champ);
+  }
+
+  private isShown(slot: GhostSlot): boolean {
+    if (slot === 'pb' && this.hasRival) return this.pbWithRival;
+    return this.visibility[slot];
+  }
+
+  /** Push effective visibility to the scene (rival presence changes the PB default). */
+  private applyVisibility(): void {
+    for (const slot of GHOST_SLOTS) this.scene?.setGhostVisible(slot, this.isShown(slot));
+  }
+
   private updateChips(): void {
+    this.applyVisibility();
     const states = {} as Record<GhostSlot, GhostChipState>;
     for (const slot of GHOST_SLOTS) {
       const g = this.ghosts[slot];
       const style = GHOST_STYLE[slot];
       states[slot] = {
         available: !!g,
-        visible: this.visibility[slot],
+        visible: this.isShown(slot),
         title: g ? `${style.label}: ${this.displayName(g.name)} ${formatTime(g.run.timeMs)}` : `${style.label}: none`,
       };
     }
@@ -476,9 +499,13 @@ export class GameApp {
   }
 
   private toggleGhost(slot: GhostSlot): void {
-    this.visibility[slot] = !this.visibility[slot];
-    writeJson(VIS_KEY, this.visibility);
-    this.scene?.setGhostVisible(slot, this.visibility[slot]);
+    if (slot === 'pb' && this.hasRival) {
+      this.pbWithRival = !this.pbWithRival;
+      writeString(PB_RIVAL_KEY, this.pbWithRival ? '1' : '0');
+    } else {
+      this.visibility[slot] = !this.visibility[slot];
+      writeJson(VIS_KEY, this.visibility);
+    }
     this.updateChips();
     this.audio.click();
   }
