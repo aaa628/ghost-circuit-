@@ -67,16 +67,24 @@ internal.post('/scheduler/daily-post', async (_req, res) => {
   }
 });
 
-internal.post('/triggers/on-app-install', async (_req, res) => {
-  try {
-    await ensureDailyPost(store);
-    const body: TriggerResponse = {};
-    res.json(body);
-  } catch (err) {
-    console.error('[trigger] on-app-install failed', err);
-    res.status(400).json({});
-  }
-});
+// Install and upgrade both make sure today's circuit is posted (idempotent),
+// so a subreddit that missed days (e.g. while unavailable) catches up.
+for (const [path, name] of [
+  ['/triggers/on-app-install', 'on-app-install'],
+  ['/triggers/on-app-upgrade', 'on-app-upgrade'],
+] as const) {
+  internal.post(path, async (_req, res) => {
+    try {
+      const result = await ensureDailyPost(store);
+      console.log(`[trigger] ${name}: daily post ${result.created ? 'created' : 'exists'}: ${result.postId}`);
+      const body: TriggerResponse = {};
+      res.json(body);
+    } catch (err) {
+      console.error(`[trigger] ${name} failed`, err);
+      res.status(400).json({});
+    }
+  });
+}
 
 app.use('/internal', internal);
 
