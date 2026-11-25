@@ -26,7 +26,7 @@ A daily 60-second racing time trial on Reddit. Everyone gets the same new track 
 
 ```markdown
 ## Inspiration
-Daily puzzles are great, but they're solitary. I wanted the "one shared challenge per day" ritual with the adrenaline of a racing game, and I wanted every Redditor's attempt to show up inside everyone else's game. Racing games already have the perfect mechanic for that: ghosts.
+Daily puzzles are great, but they're solitary. We wanted the "one shared challenge per day" ritual with the adrenaline of a racing game, and we wanted every Redditor's attempt to show up inside everyone else's game. Racing games already have the perfect mechanic for that: ghosts.
 
 ## What it does
 Every day at 00:00 UTC a new miniature circuit unlocks and the app posts it to the subreddit by itself. Everyone gets the identical track: same corners, boost pads and hazards. You have 60 seconds to clear the checkpoints in order and cross the line.
@@ -38,7 +38,7 @@ Every day at 00:00 UTC a new miniature circuit unlocks and the app posts it to t
 - **Feel the car.** A pre-rendered 3D-style car, skid marks, tyre smoke, impact sparks and synth audio, in a flat black, burgundy and white look.
 - **Never an empty game.** On a brand-new circuit a PACE BOT, driven by the same autopilot that tests every track, gives you something to beat from the first second.
 
-## How I built it
+## How we built it
 - **Devvit Web**: a lightweight splash in the feed and an expanded Phaser 3 game, an Express server on Devvit Redis, the scheduler for daily posts, install/upgrade triggers, the Reddit share sheet, and comment-as-user for challenges.
 - **Deterministic daily content**: a seed from the UTC date picks one of five circuit styles and places split lanes, tunnels, rotating sweepers, sliding gates, chicane fins, pulsing hazards and boost pads. Every generated track is checked for corner radius, self-overlap and an always-passable route.
 - **A fixed 60 Hz simulation** shared by the renderer, the autopilot, the tests and the anti-cheat. Hazards are pure functions of race time, so ghosts and players see exactly the same world.
@@ -46,18 +46,18 @@ Every day at 00:00 UTC a new miniature circuit unlocks and the app posts it to t
 - **Server-side anti-cheat**: every lap is re-checked against the track: start box, checkpoints in order, staying on the road, and a boost-aware speed limit.
 - **No external assets**: sprites, particles and sound are all generated in code.
 
-## Challenges I ran into
+## Challenges we ran into
 - **Fair random tracks.** A random track has to be finishable and fair every single day. Hazards are built with a guaranteed gap, a year of generated tracks is checked for valid geometry, and an autopilot drives 90 days of circuits to the finish in the test suite.
-- **A physics bug that looked like cheating.** Playtesting found that weaving left and right turned sideways slip into free speed, about 40% over top speed with no boost. Honest players doing it were flagged as cheaters. I fixed the physics so speed is never created from nothing, and added a regression test.
+- **A physics bug that looked like cheating.** Playtesting found that weaving left and right turned sideways slip into free speed, about 40% over top speed with no boost. Honest players doing it were flagged as cheaters. We fixed the physics so speed is never created from nothing, and added a regression test.
 - **Anti-cheat that never punishes real players.** It is calibrated on thousands of simulated laps, including messy, drift-heavy and boost-chaining ones: 0 of 948 honest laps are rejected, while ghosts sped up by 7% or more are always caught.
 - **Flaky connections.** A slow first request used to leave a player on a device-only leaderboard. The game now retries, reconnects on its own, and uploads any best lap set while offline.
 
-## Accomplishments I'm proud of
+## Accomplishments we're proud of
 - Instant retry with no reload: you're back on the grid in under a frame.
 - The same autopilot validates tracks, drives the PACE BOT and stress-tests the anti-cheat.
 - The ghosts make it social: you are always racing someone real.
 
-## What I learned
+## What we learned
 Determinism is a feature. Once every system is a pure function of the date and the race clock, sharing, replays, validation and testing all come for free.
 
 ## What's next
