@@ -47,7 +47,7 @@ Every day at 00:00 UTC a new miniature circuit unlocks and the app posts it to t
 - **No external assets**: sprites, particles and sound are all generated in code.
 
 ## Challenges I ran into
-- **Fair random tracks.** A random track has to be finishable and fair every single day. Hazards are built with a guaranteed gap, geometry is validated, and an autopilot drives every generated circuit in the test suite.
+- **Fair random tracks.** A random track has to be finishable and fair every single day. Hazards are built with a guaranteed gap, a year of generated tracks is checked for valid geometry, and an autopilot drives 90 days of circuits to the finish in the test suite.
 - **A physics bug that looked like cheating.** Playtesting found that weaving left and right turned sideways slip into free speed, about 40% over top speed with no boost. Honest players doing it were flagged as cheaters. I fixed the physics so speed is never created from nothing, and added a regression test.
 - **Anti-cheat that never punishes real players.** It is calibrated on thousands of simulated laps, including messy, drift-heavy and boost-chaining ones: 0 of 948 honest laps are rejected, while ghosts sped up by 7% or more are always caught.
 - **Flaky connections.** A slow first request used to leave a player on a device-only leaderboard. The game now retries, reconnects on its own, and uploads any best lap set while offline.
