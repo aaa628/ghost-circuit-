@@ -12,7 +12,7 @@ Paste-ready text for each part of the Devpost form, in the order the form asks f
 Ghost Circuit
 ```
 
-**Elevator pitch** (200 max, this one is 156)
+**Elevator pitch** (200 max, this one is 148)
 
 ```
 A daily 60-second racing time trial on Reddit. Everyone gets the same new track each day, and you race the ghosts of real Redditors for the #1 spot.
